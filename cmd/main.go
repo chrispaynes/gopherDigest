@@ -103,6 +103,27 @@ func main() {
 	}
 
 	initConn()
+	defer db.Close()
+
+	var hasMySQLDB string
+	// TODO: create function to echo out SQL statements to stdOut
+	fmt.Println("mysql> SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'")
+	db.QueryRow("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'").Scan(&hasMySQLDB)
+
+	fmt.Println("mysql>", fmt.Sprintf("USE %s", hasMySQLDB))
+	db.Exec(fmt.Sprintf("USE %s", hasMySQLDB))
+
+	fmt.Println("mysql> SET GLOBAL slow_query_log = 1")
+	db.Exec("SET GLOBAL slow_query_log = 'ON'")
+
+	fmt.Println("mysql> SET GLOBAL long_query_time = 0.000000")
+	db.Exec("SET GLOBAL long_query_time = 0.000000")
+
+	fmt.Println("mysql> SET GLOBAL log_slow_verbosity = 'query_plan'")
+	db.Exec("SET GLOBAL log_slow_verbosity = 'query_plan'")
+
+	fmt.Println("SQL: ", verifyGlobalVariables(db, "ON", "slow_query_log"))
+	fmt.Println("LQT: ", verifyGlobalVariables(db, "0.000000", "long_query_time"))
 
 }
 
@@ -110,8 +131,9 @@ func main() {
 func initConn() {
 	cs := cfg.Connections
 
-	db, err := sql.Open(cs.Driver, fmt.Sprintf("%s:%s@%s(%s:%v)/", cs.Auth.Username, cs.Auth.Password, cs.Protocol, cs.Host, cs.Port))
-	defer db.Close()
+	var err error
+
+	db, err = sql.Open(cs.Driver, fmt.Sprintf("%s:%s@%s(%s:%v)/", cs.Auth.Username, cs.Auth.Password, cs.Protocol, cs.Host, cs.Port))
 
 	conn := checkConnectivity(db)
 	conn.printConnStatus()
@@ -207,4 +229,16 @@ func checkEnv(c string) (Env, error) {
 // splitToTitleCase splits a string based on the delimiter and titlecases a parts' results
 func splitToTitleCase(s, d string, p int) string {
 	return strings.Title((strings.ToLower(strings.Split(s, d)[p])))
+}
+
+func verifyGlobalVariables(db *sql.DB, a, v string) bool {
+	var varKey, varValue string
+
+	fmt.Println(fmt.Sprintf("mysql> SHOW VARIABLES LIKE '%s'", v))
+	row := db.QueryRow(fmt.Sprintf("SHOW VARIABLES LIKE '%s'", v))
+
+	row.Scan(&varKey, &varValue)
+
+	return varValue == a
+
 }
