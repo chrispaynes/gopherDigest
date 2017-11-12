@@ -106,24 +106,15 @@ func main() {
 	defer db.Close()
 
 	var hasMySQLDB string
-	// TODO: create function to echo out SQL statements to stdOut
 	fmt.Println("mysql> SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'")
 	db.QueryRow("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'").Scan(&hasMySQLDB)
 
-	fmt.Println("mysql>", fmt.Sprintf("USE %s", hasMySQLDB))
-	db.Exec(fmt.Sprintf("USE %s", hasMySQLDB))
-
-	fmt.Println("mysql> SET GLOBAL slow_query_log = 1")
-	db.Exec("SET GLOBAL slow_query_log = 'ON'")
-
-	fmt.Println("mysql> SET GLOBAL long_query_time = 0.000000")
-	db.Exec("SET GLOBAL long_query_time = 0.000000")
-
-	fmt.Println("mysql> SET GLOBAL log_slow_verbosity = 'query_plan'")
-	db.Exec("SET GLOBAL log_slow_verbosity = 'query_plan'")
-
-	fmt.Println("SQL: ", verifyGlobalVariables(db, "ON", "slow_query_log"))
-	fmt.Println("LQT: ", verifyGlobalVariables(db, "0.000000", "long_query_time"))
+	printSQLStatement(db, []string{
+		fmt.Sprintf("USE %s", hasMySQLDB),
+		"SET GLOBAL slow_query_log = 'ON'",
+		"SET GLOBAL long_query_time = 0.000000",
+		"SET GLOBAL log_slow_verbosity = 'query_plan'",
+	})
 
 }
 
@@ -241,4 +232,11 @@ func verifyGlobalVariables(db *sql.DB, a, v string) bool {
 
 	return varValue == a
 
+}
+
+func printSQLStatement(db *sql.DB, stmnts []string) {
+	for _, s := range stmnts {
+		fmt.Printf("mysql> %s;\n", s)
+		db.Exec(s)
+	}
 }
