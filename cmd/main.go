@@ -72,15 +72,39 @@ type Env struct {
 	Port     string
 }
 
-// NewDependency creates
-func NewDependency(n, e, p, s string) Dependency {
-	dep := Dependency{}
-	dep.Name = n
-	dep.ExeName = e
-	dep.Path = p
-	dep.Source = s
+type delimitedString struct {
+	Prefix    string
+	Delimiter string
+	Suffix    string
+}
 
-	return dep
+type delimitedCollection struct {
+	Collection []delimitedString
+	Delimiter  string
+}
+
+func newDelimitedString(p, d, s string) delimitedString {
+	return delimitedString{Prefix: p, Suffix: s, Delimiter: d}
+}
+
+// TitlecaseJoiner is the interface implemented by delimited string values
+type TitlecaseJoiner interface {
+	Titlecase() string
+	Join() string
+}
+
+func newDelimitedCollection(prefix, delimiter string, suffixColl []string) delimitedCollection {
+	dsc := delimitedCollection{Delimiter: delimiter}
+
+	for _, suffix := range suffixColl {
+		dsc.Collection = append(dsc.Collection, newDelimitedString(prefix, delimiter, suffix))
+	}
+
+	return dsc
+}
+
+func newDependency(n, e, p, s string) Dependency {
+	return Dependency{Name: n, ExeName: e, Path: p, Source: s}
 }
 
 var cfg = new(Config)
@@ -93,8 +117,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cfg.Dependencies = []Dependency{NewDependency("MySQL", "mysql", "/usr/bin/mysql", ""),
-		NewDependency("PT Query Digest", "pt-query-digest", "/usr/bin/vendor_perl/pt-query-digest", "")}
+	cfg.Dependencies = []Dependency{newDependency("MySQL", "mysql", "/usr/bin/mysql", ""),
+		newDependency("PT Query Digest", "pt-query-digest", "/usr/bin/vendor_perl/pt-query-digest", "")}
 	cfg.Connections = NewConnString(Auth{env.Username, env.Password}, "mysql", env.Host, env.Port, "tcp")
 	err = locateDependencies(cfg.Dependencies)
 
@@ -195,34 +219,48 @@ func (e Env) set(k, v string) Env {
 // checkEnv verifies the necessary environment variables are defined
 func checkEnv(c string) (Env, error) {
 	env := Env{}
-	required := []string{"MYSQL_USERNAME", "MYSQL_PASSWORD", "MYSQL_HOST", "MYSQL_PORT"}
+	required := newDelimitedCollection("MYSQL", "_", []string{"USERNAME", "PASSWORD", "HOST", "PORT"})
 	missing := []string{}
 	var err error
 
-	for _, v := range required {
-		val, isSet := os.LookupEnv(v)
+	for _, v := range required.Collection {
+		val, isSet := os.LookupEnv(v.Join())
 
 		if val != "" && isSet {
-			env = env.set(splitToTitleCase(v, "_", 1), val)
+			env = env.set(splitToTitlecase(1, v), val)
 		} else {
-			missing = append(missing, v)
-			fmt.Printf("missing $%s\n", v)
+			missing = append(missing, v.Join())
 		}
 	}
 
 	if len(missing) != 0 {
-		err = errors.New(color.RedString("Please set missing environment variables"))
+		err = errors.New(color.RedString(fmt.Sprintf("Please set missing environment variables: %s", missing)))
 	}
 
 	return env, err
 }
 
-// splitToTitleCase splits a string based on the delimiter and titlecases a parts' results
-func splitToTitleCase(s, d string, p int) string {
-	return strings.Title((strings.ToLower(strings.Split(s, d)[p])))
+func splitToTitlecase(p int, tj TitlecaseJoiner) string {
+	var str string
+
+	if _, ok := tj.(delimitedString); ok {
+		str = tj.Titlecase()
+	}
+
+	return str
 }
 
-func verifyGlobalVariables(db *sql.DB, a, v string) bool {
+// Titlecase titlecases a delimitedString field
+func (ds delimitedString) Titlecase() string {
+	return strings.Title(strings.ToLower(ds.Suffix))
+}
+
+// Join concatenates a delimitedString
+func (ds delimitedString) Join() string {
+	return strings.Join([]string{ds.Prefix, ds.Suffix}, ds.Delimiter)
+}
+
+func verify(db *sql.DB, a, v string) bool {
 	var varKey, varValue string
 
 	fmt.Println(fmt.Sprintf("mysql> SHOW VARIABLES LIKE '%s'", v))
