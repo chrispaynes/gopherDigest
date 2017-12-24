@@ -7,6 +7,15 @@ pkgDir = $(src)/$(pkg)
 build:
 	@go build $(main)
 
+dockbuild:
+	docker build .
+
+dockUp: dockDown
+	docker-compose up
+
+dockDown:
+	docker-compose down	
+
 clean:
 	@rm -f ./cmd/main
 
