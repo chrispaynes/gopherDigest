@@ -60,7 +60,7 @@ func newDelimitedCollection(prefix, delimiter string, suffixColl []string) forma
 	return dsc
 }
 
-// NewDependency does
+// NewDependency creates a new runtime dependency
 func NewDependency(n, e, p, s string) Dependency {
 	return Dependency{Name: n, ExeName: e, Path: p, Source: s}
 }
@@ -94,8 +94,8 @@ func (e Env) set(k, v string) Env {
 	return e
 }
 
-// CheckEnv verifies the necessary environment variables are defined
-func CheckEnv(c string) (Env, error) {
+// Check verifies the necessary environment variables are defined
+func Check(c string) (Env, error) {
 	env := Env{}
 	required := newDelimitedCollection("MYSQL", "_", []string{"USERNAME", "PASSWORD", "HOST", "PORT"})
 	missing := []string{}

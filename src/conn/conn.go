@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 )
 
-// Status definies the status of a network connection
+// Status defines the status of a network connection
 type Status struct {
 	connection string
 	port       string

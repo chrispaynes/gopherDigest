@@ -1,6 +1,8 @@
 package format
 
-import "strings"
+import (
+	"strings"
+)
 
 // DelimitedString is a
 type DelimitedString struct {
