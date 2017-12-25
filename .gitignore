@@ -8,3 +8,8 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+./test_db/
+./data/
+./mysql-bin.index
+.src/debug/
