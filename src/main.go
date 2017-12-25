@@ -12,17 +12,20 @@ import (
 )
 
 func main() {
+	var err error
 	var cfg = new(config.Config)
 	var db *sql.DB
-	env, err := config.Check("mysql")
+
+	cfg.Env, err = config.Check("mysql")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cfg.Dependencies = []config.Dependency{config.NewDependency("MySQL", "mysql", "/usr/bin/mysql", ""),
-		config.NewDependency("PT Query Digest", "pt-query-digest", "/usr/bin/vendor_perl/pt-query-digest", "")}
-	cfg.Connections = conn.NewConnString(config.Auth{Username: env.Username, Password: env.Password}, "mysql", env.Host, env.Port, "tcp")
+	cfg.AddConfig("connection", "mysql", "localhost", cfg.Env.Port, "tcp")
+	cfg.AddConfig("dependency", "MySQL", "mysql", "/usr/bin/mysql", "")
+	cfg.AddConfig("dependency", "PT Query Digest", "pt-query-digest", "/usr/bin/vendor_perl/pt-query-digest", "")
+
 	err = config.LocateDependencies(cfg.Dependencies)
 
 	if err != nil {

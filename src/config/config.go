@@ -15,6 +15,7 @@ import (
 type Config struct {
 	Dependencies []Dependency
 	Connections  ConnectionStr
+	Env          Env
 }
 
 // Dependency defines an application runtime dependency
@@ -60,9 +61,21 @@ func newDelimitedCollection(prefix, delimiter string, suffixColl []string) forma
 	return dsc
 }
 
+// NewConnString creates a connection string
+func NewConnString(a Auth, args ...string) ConnectionStr {
+	cn := ConnectionStr{}
+	cn.Auth = a
+	cn.Driver = args[0]
+	cn.Host = args[1]
+	cn.Port = args[2]
+	cn.Protocol = args[3]
+
+	return cn
+}
+
 // NewDependency creates a new runtime dependency
-func NewDependency(n, e, p, s string) Dependency {
-	return Dependency{Name: n, ExeName: e, Path: p, Source: s}
+func NewDependency(args ...string) Dependency {
+	return Dependency{Name: args[0], ExeName: args[1], Path: args[2], Source: args[3]}
 }
 
 // LocateDependencies locates required deps
@@ -127,5 +140,19 @@ func verify(db *sql.DB, a, v string) bool {
 	row.Scan(&varKey, &varValue)
 
 	return varValue == a
+
+}
+
+// AddConfig adds a runtime depedency to the configuration
+func (cfg *Config) AddConfig(ctx string, args ...string) {
+	switch ctx {
+	case "dependency":
+		cfg.Dependencies = append(cfg.Dependencies, NewDependency(args...))
+	case "connection":
+		a := Auth{cfg.Env.Username, cfg.Env.Password}
+		cfg.Connections = NewConnString(a, args...)
+	default:
+		return
+	}
 
 }
