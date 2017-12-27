@@ -2,13 +2,11 @@ src = ./src
 main = $(src)/main.go
 pkgDir = $(src)/$(pkg)
 
-.PHONY: clean build install start test
+.PHONY: clean build dockerUp fmt install start test src-package SQLdata
 
 build:
-	@go build $(main)
-
-dockerBuild:
-	docker build .
+	docker-compose build
+	docker-compose up
 
 dockerUp: clean build
 	docker-compose down

@@ -19,6 +19,7 @@ services:
       - MYSQL_PORT=${MYSQL_PORT}
     depends_on:
       - mysql
+    restart: always
   mysql:
     networks:
     - gopherDigest
