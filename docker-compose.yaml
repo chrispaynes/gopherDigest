@@ -12,11 +12,8 @@ services:
     volumes:
       - "/usr/bin/mysql:/usr/bin/mysql"
       - "/usr/bin/vendor_perl:/usr/bin/vendor_perl"
-    environment:
-      - MYSQL_USERNAME=${MYSQL_USERNAME}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_HOST=localhost
-      - MYSQL_PORT=${MYSQL_PORT}
+    env_file:
+      - ./Docker/mysql.env
     depends_on:
       - mysql
     restart: always
@@ -29,11 +26,7 @@ services:
       - "./data:/docker-entrypoint-initdb.d"
     ports:
       - "3306:3306"
-    environment:
-      - MYSQL_USER=${MYSQL_USERNAME}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_PORT=${MYSQL_PORT}
-      - MYSQL_DATABASE=employees
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ROOT_HOST=${MYSQL_HOST}
+    env_file:
+      - ./Docker/mysql.env
+
+      

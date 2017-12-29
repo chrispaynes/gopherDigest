@@ -9,8 +9,8 @@ build:
 	docker-compose up
 
 dockerUp: clean build
-	docker-compose down
-	docker-compose up
+	@docker-compose down
+	@docker-compose up
 
 clean:
 	@rm -f ./cmd/main

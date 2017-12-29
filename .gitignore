@@ -13,3 +13,4 @@
 ./data/
 ./mysql-bin.index
 .src/debug/
+./Docker/*.env

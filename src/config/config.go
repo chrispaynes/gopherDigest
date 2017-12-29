@@ -29,7 +29,7 @@ type Dependency struct {
 // Env defines the host machine's environment variables
 type Env struct {
 	Context  string
-	Username string
+	User     string
 	Password string
 	Host     string
 	Port     string
@@ -110,7 +110,7 @@ func (e Env) set(k, v string) Env {
 // Check verifies the necessary environment variables are defined
 func Check(c string) (Env, error) {
 	env := Env{}
-	required := newDelimitedCollection("MYSQL", "_", []string{"USERNAME", "PASSWORD", "HOST", "PORT"})
+	required := newDelimitedCollection("MYSQL", "_", []string{"USER", "PASSWORD", "HOST", "PORT"})
 	missing := []string{}
 	var err error
 
@@ -149,7 +149,7 @@ func (cfg *Config) AddConfig(ctx string, args ...string) {
 	case "dependency":
 		cfg.Dependencies = append(cfg.Dependencies, NewDependency(args...))
 	case "connection":
-		a := Auth{cfg.Env.Username, cfg.Env.Password}
+		a := Auth{cfg.Env.User, cfg.Env.Password}
 		cfg.Connections = NewConnString(a, args...)
 	default:
 		return

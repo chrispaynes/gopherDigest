@@ -25,7 +25,7 @@ func (s Status) printConnStatus() {
 // CheckConnectivity does
 func CheckConnectivity(d *sql.DB) Status {
 	color.New(color.Bold).Println("Checking MySQL Connection")
-	sock, sockErr := os.Stat("/var/run/mysqld/mysqld.sock")
+	sock, sockErr := os.Stat(os.Getenv("MYSQL_SOCKET"))
 	cs := Status{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
