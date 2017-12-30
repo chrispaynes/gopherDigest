@@ -31,7 +31,8 @@ SQLdata:
 	&& docker cp ./test_db/load_salaries2.dump MySQL:/docker-entrypoint-initdb.d/ \
 	&& docker cp ./test_db/load_salaries3.dump MySQL:/docker-entrypoint-initdb.d/ \
 	&& docker cp ./test_db/load_titles.dump MySQL:/docker-entrypoint-initdb.d/ \
-	&& docker cp ./test_db/objects.sql MySQL:/docker-entrypoint-initdb.d/ 
+	&& docker cp ./test_db/objects.sql MySQL:/docker-entrypoint-initdb.d/ \
+	&& docker exec MySQL sh -c 'mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" < /docker-entrypoint-initdb.d/employees.sql'
 
 src-package:
 	@mkdir -p $(pkgDir)
