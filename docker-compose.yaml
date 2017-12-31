@@ -11,7 +11,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - "/usr/bin/mysql:/usr/bin/mysql"
-      - "/usr/bin/vendor_perl:/usr/bin/vendor_perl"
+      - "/usr/bin/pt-query-digest:/usr/bin/pt-query-digest"
     env_file:
       - ./Docker/mysql.env
     depends_on:

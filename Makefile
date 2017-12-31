@@ -2,7 +2,7 @@ src = ./src
 main = $(src)/main.go
 pkgDir = $(src)/$(pkg)
 
-.PHONY: clean build dockerUp fmt install start test src-package SQLdata
+.PHONY: clean build dockerUp fmt install perconaTools start test src-package SQLdata
 
 build:
 	docker-compose build
@@ -20,6 +20,16 @@ fmt:
 
 install:
 	go install $(main)
+
+perconaTools:
+	if [ -n "$$(grep -Ei 'debian|ubuntu|mint' /etc/*release)" ]; then \
+		wget "https://www.percona.com/downloads/percona-toolkit/3.0.5/binary/debian/stretch/x86_64/percona-toolkit_3.0.5-1.stretch_amd64.deb" \
+		&& sudo apt install --no-install-recommends -y ./percona-toolkit_3.0.5-1.stretch_amd64.deb; \
+	fi; 
+	if [ -n "$$(grep -Ei 'fedora|redhat' /etc/*release)" ]; then \
+		wget "https://www.percona.com/downloads/percona-toolkit/3.0.5/binary/redhat/7/x86_64/percona-toolkit-3.0.5-1.el7.x86_64.rpm" \
+		&& sudo dnf install -y ./percona-toolkit-3.0.5-1.el7.x86_64.rpm; \
+	fi;
 
 SQLdata:
 	docker cp ./test_db/employees.sql MySQL:/docker-entrypoint-initdb.d/ \
@@ -39,7 +49,7 @@ src-package:
 	@echo package $(pkg) | tee $(pkgDir)/$(pkg).go $(pkgDir)/$(pkg)_test.go
 
 start: clean
-	@go run $(main)
+	go run $(main)
 
 test:
 	@go test **/*_test.go

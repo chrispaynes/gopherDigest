@@ -11,7 +11,7 @@ Work in Progress
 - Modify the bottom of the `test_db/employees.sql` script so that the .dump source files are prefixed with `/docker-entrypoint-initdb.d/`, for example `source load_departments.dump;` should be `source /docker-entrypoint-initdb.d/load_departments.dump ;` Remove `source show_elapsed.sql ;` from the end of the file, as we will not need it.
 - Run `docker pull mysql:8.0` so that the image will be ready to accept SQL data
 - Run `makeSQLdata` to copy necessary SQL scripts from the `test_db` directory into the MySQL image
-- Using the `gopherDigest/Docker/mysql.TEMPLATE.env` template, populate the Environment Variables and save the file as `gopherDigest/Docker/mysql.env`
+- Using the `gopherDigest/Docker/mysql.TEMPLATE.env` template, populate the Environment Variables and save the file as `gopherDigest/Docker/mysql.env`. To run the app on the host machine, you will need to export the environment variables to the shell
 - Run `make build` to spin up the Docker GopherDigest, and MySQL Server application services
 
 
