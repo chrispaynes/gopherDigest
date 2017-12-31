@@ -6,15 +6,19 @@ import (
 	"gopherDigest/src/storage"
 )
 
-// SetGlobals sets global MySQL variables
-func SetGlobals(db *sql.DB) error {
-	var hasMySQLDB string
-	fmt.Println("mysql> SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'")
-	db.QueryRow("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'").Scan(&hasMySQLDB)
+// SetMySQLGlobals sets global MySQL variables
+func SetMySQLGlobals(db *sql.DB) ([]string, error) {
+	mySQLDb, err := storage.PrintExec(db, []string{
+		"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'",
+	})
+
+	if err != nil {
+		return []string{}, fmt.Errorf("could not find the 'mysql' database schema %s", err)
+	}
 
 	// enable slow query logs on MySQL
 	return storage.PrintExec(db, []string{
-		fmt.Sprintf("USE %s", hasMySQLDB),
+		fmt.Sprintf("USE %s", mySQLDb[0]),
 		"SET @@GLOBAL.slow_query_log = 'ON'",
 		"SET long_query_time = 0",
 		"SET @@GLOBAL.long_query_time = 0",

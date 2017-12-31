@@ -106,7 +106,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	config.SetGlobals(db)
+	config.SetMySQLGlobals(db)
 
 	// TODO MOVE TO the data storage package
 	// generate slow query log data and move data to RethinkDB
