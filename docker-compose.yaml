@@ -28,5 +28,14 @@ services:
       - "3306:3306"
     env_file:
       - ./Docker/mysql.env
-
-      
+  rethinkdb:
+    networks:
+    - gopherDigest
+    container_name: RethinkDB
+    build:
+      context: .
+      dockerfile: Dockerfile-RethinkDB
+    ports:
+      - "28015:28015"
+      - "29015:29015"
+      - "8080:8080"
