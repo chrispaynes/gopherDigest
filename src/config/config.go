@@ -108,7 +108,7 @@ func (e Env) set(k, v string) Env {
 }
 
 // Check verifies the necessary environment variables are defined
-func Check(c string) (Env, error) {
+func Check() (Env, error) {
 	env := Env{}
 	required := newDelimitedCollection("MYSQL", "_", []string{"USER", "PASSWORD", "HOST", "PORT"})
 	missing := []string{}
