@@ -50,9 +50,15 @@ type query struct {
 }
 
 // PrintExec prints SQL statements to standard output
-func PrintExec(db *sql.DB, stmnts []string) {
+func PrintExec(db *sql.DB, stmnts []string) error {
 	for _, s := range stmnts {
 		fmt.Printf("mysql> %s;\n", s)
-		db.Exec(s)
+		_, err := db.Exec(s)
+
+		if err != nil {
+			return fmt.Errorf("could not execute the SQL statement %s", err)
+		}
 	}
+
+	return nil
 }

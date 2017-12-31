@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gopherDigest/src/config"
 	"gopherDigest/src/conn"
-	"gopherDigest/src/storage"
 	"log"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -95,30 +94,19 @@ func main() {
 	cfg.AddConfig("dependency", "MySQL", "mysql", "/usr/bin/mysql", "")
 	cfg.AddConfig("dependency", "PT Query Digest", "pt-query-digest", "/usr/bin/pt-query-digest", "")
 
-	err = config.LocateDependencies(cfg.Dependencies)
+	_, err = config.LocateDependencies(cfg.Dependencies)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db = conn.Init(cfg)
+	db, err = conn.Init(cfg)
 	defer db.Close()
 
-	var hasMySQLDB string
-	fmt.Println("mysql> SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'")
-	db.QueryRow("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'").Scan(&hasMySQLDB)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// enable slow query logs on MySQL
-	storage.PrintExec(db, []string{
-		fmt.Sprintf("USE %s", hasMySQLDB),
-		"SET @@GLOBAL.slow_query_log = 'ON'",
-		"SET long_query_time = 0",
-		"SET @@GLOBAL.long_query_time = 0",
-		"SET @@GLOBAL.log_slow_admin_statements = 'ON'",
-		"SET @@GLOBAL.log_slow_slave_statements = 'ON'",
-		"SET sql_log_off = 'ON'",
-		"SET @@GLOBAL.sql_log_off = 'ON'",
-		"SET @@GLOBAL.log_queries_not_using_indexes = 'ON'",
-	})
+	config.SetGlobals(db)
 
 	// TODO MOVE TO the data storage package
 	// generate slow query log data and move data to RethinkDB

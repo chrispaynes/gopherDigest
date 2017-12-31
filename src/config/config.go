@@ -79,26 +79,18 @@ func NewDependency(args ...string) Dependency {
 }
 
 // LocateDependencies locates required deps
-func LocateDependencies(d []Dependency) error {
-	var depErr error
-
+func LocateDependencies(d []Dependency) (*[]Dependency, error) {
 	color.New(color.Bold).Println("\nLocating Dependencies")
-
 	for _, dep := range d {
 		_, err := os.Stat(dep.Path)
-		if err == nil {
-			color.New(color.FgHiGreen).Printf("  [\u2713] Using %v executable from %s \n", dep.Name, dep.Path)
-		}
 		if err != nil {
 			color.New(color.FgHiRed).Printf("  [x] Unable to locate %s executable at %s\n", dep.Name, dep.Path)
-			depErr = fmt.Errorf("ERROR: Missing Required Dependencies")
+			return &d, fmt.Errorf("ERROR: Missing Required Dependencies %s", err)
 		}
+		color.New(color.FgHiGreen).Printf("  [\u2713] Using %v executable from %s \n", dep.Name, dep.Path)
 	}
-
 	fmt.Println()
-
-	return depErr
-
+	return &d, nil
 }
 
 // set is helper function to set a field's value within a struct

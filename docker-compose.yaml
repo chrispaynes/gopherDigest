@@ -11,6 +11,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - "/usr/bin/mysql:/usr/bin/mysql"
+      - "/var/run/mysqld/mysqld.sock:/var/run/mysqld/mysqld.sock"
       - "/usr/bin/pt-query-digest:/usr/bin/pt-query-digest"
     env_file:
       - ./Docker/mysql.env

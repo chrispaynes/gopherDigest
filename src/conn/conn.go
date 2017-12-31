@@ -18,50 +18,58 @@ type Status struct {
 	errors     []error
 }
 
-func (s Status) printConnStatus() {
+func (s Status) printStatus() {
 	fmt.Printf("  %+v\n", s)
 }
 
-// CheckConnectivity does
-func CheckConnectivity(d *sql.DB) Status {
-	color.New(color.Bold).Println("Checking MySQL Connection")
-	sock, sockErr := os.Stat(os.Getenv("MYSQL_SOCKET"))
+// CheckConnectivity checks for connectivity to external services
+func CheckConnectivity(d *sql.DB) (*Status, error) {
 	cs := Status{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
-	err := d.Ping()
+	color.New(color.Bold).Println("Checking MySQL Connection")
 
-	if err == nil {
-		cs.connection = green.Sprint(" OPEN")
-		cs.port = green.Sprint(" 3306")
-	} else {
+	err := d.Ping()
+	if err != nil {
 		cs.connection = red.Sprint(" CLOSED")
 		cs.port = red.Sprint(" NOT FOUND")
-		cs.errors = append(cs.errors, fmt.Errorf("Could not connect to DB, %v", d.Stats()))
-		log.Fatal()
+		cs.errors = append(cs.errors, fmt.Errorf("could not connect to DB, %v", d.Stats()))
+		return &cs, err
 	}
 
-	if sockErr == nil {
-		cs.socket = green.Sprintf(" %s", sock.Name())
-	} else {
-		cs.socket = red.Sprintf(" %s", sockErr)
+	socketPath := os.Getenv("MYSQL_SOCKET")
+	socket, err := os.Stat(socketPath)
+	if err != nil {
+		cs.socket = red.Sprintf(" %s", err)
+		return &cs, fmt.Errorf("could not locate the MySQL Socket file, %s", err)
 	}
 
-	return cs
+	cs.connection = green.Sprint(" OPEN")
+	cs.port = green.Sprint(" 3306")
+	cs.socket = green.Sprintf(" %s", socket.Name())
+
+	return &cs, nil
 }
 
 // Init initializes the DB connection
-func Init(cfg *config.Config) *sql.DB {
-	var err error
+func Init(cfg *config.Config) (*sql.DB, error) {
 	cs := cfg.Connections
 	db, err := sql.Open(cs.Driver, fmt.Sprintf("%s:%s@%s(%s:%v)/", cs.Auth.Username, cs.Auth.Password, cs.Protocol, cs.Host, cs.Port))
 
 	if err != nil {
 		log.Fatal(err)
+		return db, fmt.Errorf("could not open database connection %s", err)
 	}
 
-	CheckConnectivity(db).printConnStatus()
+	conn, err := CheckConnectivity(db)
 
-	return db
+	if err != nil {
+		return db, fmt.Errorf("could not maintain database connection %s", err)
+	}
+
+	conn.printStatus()
+	fmt.Println()
+
+	return db, nil
 }
