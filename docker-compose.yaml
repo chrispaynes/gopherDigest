@@ -36,6 +36,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-RethinkDB
+    env_file:
+      - ./Docker/rethinkdb.env
     ports:
       - "28015:28015"
       - "29015:29015"

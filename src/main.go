@@ -4,46 +4,24 @@ import (
 	"fmt"
 	"gopherDigest/src/config"
 	"gopherDigest/src/conn"
+	"gopherDigest/src/storage"
 	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 	r "gopkg.in/gorethink/gorethink.v4"
 )
 
-// QueryDump represents a MySQL Query Performance Dump
-type QueryDump struct {
-	Search        string     `gorethink:"Search"`
-	ExecutionTime float64    `gorethink:"ExecutionTime"`
-	QueryTime     r.Term     `gorethink:"QueryTime"`
-	SQLExplain    SQLExplain `gorethink:"SQLExplain"`
-}
-
-// SQLExplain represents a MySQL Explain Result
-type SQLExplain struct {
-	ID           int     `gorethink:"ZID"`
-	SelectType   *string `gorethink:"SelectType"`
-	Table        *string `gorethink:"Table"`
-	Partitions   *string `gorethink:"Partitions"`
-	Ztype        *string `gorethink:"Ztype"`
-	PossibleKeys *string `gorethink:"PossibleKeys"`
-	Key          *string `gorethink:"Key"`
-	KeyLen       *string `gorethink:"KeyLen"`
-	Ref          *string `gorethink:"Ref"`
-	Rows         int     `gorethink:"Rows"`
-	Filtered     []byte  `gorethink:"Filtered"`
-	Extra        *string `gorethink:"Extra"`
-}
-
 func main() {
 	var err error
 
-	// WIP - RETHINKDB move to config module
-	session, err := r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
-		Database: "GopherDigest",
-		Username: "fakeUser123",
-		Password: "fakePassword123",
-	})
+	cfg, err := config.New()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	RDBsession, err := conn.ConnectRethinkDB(cfg.Env[1])
+	defer RDBsession.Close()
 
 	if err != nil {
 		log.Fatalln(err)
@@ -56,17 +34,17 @@ func main() {
 	r.DB("rethinkdb").Table("users").Insert(map[string]string{
 		"id":       "fakeUser123",
 		"password": "fakePassword123",
-	}).Exec(session)
+	}).Exec(RDBsession)
 
 	// WIP - RETHINKDB move to config module
 	// then grant that user access to any tables or databases they need access to
 	r.Table("Queries").Grant("fakeUser123", map[string]bool{
 		"read":  true,
 		"write": true,
-	}).Exec(session)
+	}).Exec(RDBsession)
 
 	var row []string
-	res, err := r.DBList().Run(session)
+	res, err := r.DBList().Run(RDBsession)
 	if err != nil {
 		fmt.Println("could not load the RethinkDB databases")
 	}
@@ -76,17 +54,11 @@ func main() {
 	// check if DB already exists
 	// todo add similar check for DB table
 	if indexOfString("GopherDigest", row) == -1 {
-		r.DBCreate("GopherDigest").Exec(session)
-		r.DB("GopherDigest").TableCreate("Queries").Exec(session)
+		r.DBCreate("GopherDigest").Exec(RDBsession)
+		r.DB("GopherDigest").TableCreate("Queries").Exec(RDBsession)
 	}
 
-	cfg, err := config.New()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	db, err := conn.Init(cfg.Connections)
+	db, err := conn.ConnectMySQL(cfg.Connections)
 	defer db.Close()
 
 	if err != nil {
@@ -100,7 +72,7 @@ func main() {
 	var test []string
 	queryString := "SELECT * FROM employees.employees LEFT JOIN employees.dept_emp USING(emp_no)"
 	db.Exec(queryString)
-	se := SQLExplain{}
+	se := storage.SQLExplain{}
 	explainRows, _ := db.Query("EXPLAIN " + queryString)
 	defer explainRows.Close()
 
@@ -141,7 +113,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	r.Table("Queries").Insert(QueryDump{queryString, 0.34343, r.Now(), se}).Run(session)
+	r.Table("Queries").Insert(storage.QueryDump{queryString, 0.34343, r.Now(), se}).Run(RDBsession)
 
 }
 
