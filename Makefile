@@ -2,20 +2,34 @@ src = ./src
 main = $(src)/main.go
 pkgDir = $(src)/$(pkg)
 
-.PHONY: clean build dockerUp fmt install perconaTools start test src-package SQLdata
+.PHONY: build clean coverage dockerUp fmt install perconaTools start test src-package SQLdata vet
 
 build:
 	docker-compose build
-	docker-compose up
 
-dockerUp: clean build
-	@docker-compose down
-	@docker-compose up
+dockerUp: clean
+	@docker-compose up -d
+	@python -m webbrowser "http://localhost:8080" &> /dev/null
 
 clean:
-	@rm -f ./cmd/main
+	@docker-compose down
+	@rm -f ./main
 
-fmt: 
+coverage:
+	@set -e;
+	@echo "mode: set" > acc.out;
+
+	@for Dir in $$(find . -type d); do \
+		if ls "$$Dir"/*.go &> /dev/null; then \
+			go test -coverprofile=profile.out "$$Dir"; \
+			go tool cover -html=profile.out; \
+		fi \
+	done
+
+	@rm -rf ./profile.out;
+	@rm -rf ./acc.out;
+
+fmt:
 	@go fmt ./...
 
 install:
@@ -25,7 +39,7 @@ perconaTools:
 	if [ -n "$$(grep -Ei 'debian|ubuntu|mint' /etc/*release)" ]; then \
 		wget "https://www.percona.com/downloads/percona-toolkit/3.0.5/binary/debian/stretch/x86_64/percona-toolkit_3.0.5-1.stretch_amd64.deb" \
 		&& sudo apt install --no-install-recommends -y ./percona-toolkit_3.0.5-1.stretch_amd64.deb; \
-	fi; 
+	fi;
 	if [ -n "$$(grep -Ei 'fedora|redhat' /etc/*release)" ]; then \
 		wget "https://www.percona.com/downloads/percona-toolkit/3.0.5/binary/redhat/7/x86_64/percona-toolkit-3.0.5-1.el7.x86_64.rpm" \
 		&& sudo dnf install -y ./percona-toolkit-3.0.5-1.el7.x86_64.rpm; \
@@ -53,3 +67,6 @@ start: clean
 
 test:
 	@go test **/*_test.go
+
+vet:
+	@go vet ./...

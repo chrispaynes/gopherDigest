@@ -17,6 +17,7 @@ services:
       - ./Docker/mysql.env
     depends_on:
       - mysql
+      - rethinkdb
     restart: always
   mysql:
     networks:
