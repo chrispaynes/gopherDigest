@@ -4,27 +4,22 @@ import (
 	"database/sql"
 	"fmt"
 	"gopherDigest/src/config"
-	"log"
 	"os"
 
 	"github.com/fatih/color"
 )
 
-// Status defines the status of a network connection
-type Status struct {
-	connection string
-	port       string
-	socket     string
-	errors     []error
+// status defines the status of a network connection
+type status struct {
+	conn   string
+	port   string
+	socket string
+	errors []error
 }
 
-func (s Status) printStatus() {
-	fmt.Printf("  %+v\n", s)
-}
-
-// CheckConnectivity checks for connectivity to external services
-func CheckConnectivity(d *sql.DB) (*Status, error) {
-	cs := Status{}
+// Check checks for connectivity to external services
+func check(d *sql.DB) (*status, error) {
+	stat := status{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
@@ -32,44 +27,42 @@ func CheckConnectivity(d *sql.DB) (*Status, error) {
 
 	err := d.Ping()
 	if err != nil {
-		cs.connection = red.Sprint(" CLOSED")
-		cs.port = red.Sprint(" NOT FOUND")
-		cs.errors = append(cs.errors, fmt.Errorf("could not connect to DB, %v", d.Stats()))
-		return &cs, err
+		stat.conn = red.Sprint(" CLOSED")
+		stat.port = red.Sprint(" NOT FOUND")
+		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", d.Stats()))
+		return &stat, err
 	}
 
-	socketPath := os.Getenv("MYSQL_SOCKET")
-	socket, err := os.Stat(socketPath)
+	sock, err := os.Stat(os.Getenv("MYSQL_SOCKET"))
 	if err != nil {
-		cs.socket = red.Sprintf(" %s", err)
-		return &cs, fmt.Errorf("could not locate the MySQL Socket file, %s", err)
+		stat.socket = red.Sprintf(" %s", err)
+		return &stat, fmt.Errorf("could not locate the MySQL file\n%s", err)
 	}
 
-	cs.connection = green.Sprint(" OPEN")
-	cs.port = green.Sprint(" 3306")
-	cs.socket = green.Sprintf(" %s", socket.Name())
+	stat.conn = green.Sprint(" OPEN")
+	stat.port = green.Sprint(" 3306")
+	stat.socket = green.Sprintf(" %s", sock.Name())
 
-	return &cs, nil
+	return &stat, nil
 }
 
 // Init initializes the DB connection
-func Init(cfg *config.Config) (*sql.DB, error) {
-	cs := cfg.Connections
-	db, err := sql.Open(cs.Driver, fmt.Sprintf("%s:%s@%s(%s:%v)/", cs.Auth.Username, cs.Auth.Password, cs.Protocol, cs.Host, cs.Port))
+func Init(c config.MySQLConn) (*sql.DB, error) {
+	fmt.Println("c.Driver", c.Driver)
+	db, err := sql.Open(c.Driver, fmt.Sprintf("%s:%s@%s(%s:%v)/", c.Auth.Username, c.Auth.Password, c.Protocol, c.Host, c.Port))
 
 	if err != nil {
-		log.Fatal(err)
-		return db, fmt.Errorf("could not open database connection %s", err)
+		return db, fmt.Errorf("could not open database connection\n%s", err)
 	}
 
-	conn, err := CheckConnectivity(db)
+	conn, err := check(db)
 
 	if err != nil {
-		return db, fmt.Errorf("could not maintain database connection %s", err)
+		return db, fmt.Errorf("could not maintain database connection\n%s", err)
 	}
 
-	conn.printStatus()
-	fmt.Println()
+	// print connection status
+	fmt.Printf("  %+v\n\n", conn)
 
 	return db, nil
 }

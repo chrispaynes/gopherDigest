@@ -48,3 +48,14 @@ type TitlecaseJoiner interface {
 	Titlecase() string
 	Join() string
 }
+
+// NewDelimitedCollection creates a collection of string with common prefix, delimiter and variable collection of suffixes
+func NewDelimitedCollection(prefix, delimiter string, suffixColl []string) DelimitedCollection {
+	dsc := DelimitedCollection{Delimiter: delimiter}
+
+	for _, suffix := range suffixColl {
+		dsc.Collection = append(dsc.Collection, NewDelimitedString(prefix, delimiter, suffix))
+	}
+
+	return dsc
+}

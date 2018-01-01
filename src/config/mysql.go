@@ -4,7 +4,32 @@ import (
 	"database/sql"
 	"fmt"
 	"gopherDigest/src/storage"
+	"os"
 )
+
+// MySQLConn defines data source and the means of connecting to it
+type MySQLConn struct {
+	Auth     Auth
+	Driver   string
+	Host     string
+	Port     string
+	Status   interface{}
+	Protocol string
+}
+
+// NewConnString creates a connection string
+func (c *Config) NewConnString(args ...string) *MySQLConn {
+	cn := MySQLConn{
+		Auth:     Auth{Username: os.Getenv(args[0]), Password: os.Getenv(args[1])},
+		Driver:   args[2],
+		Host:     args[3],
+		Port:     args[4],
+		Protocol: args[5],
+	}
+	c.Connections = cn
+
+	return &cn
+}
 
 // SetMySQLGlobals sets global MySQL variables
 func SetMySQLGlobals(db *sql.DB) ([]string, error) {
@@ -13,7 +38,7 @@ func SetMySQLGlobals(db *sql.DB) ([]string, error) {
 	})
 
 	if err != nil {
-		return []string{}, fmt.Errorf("could not find the 'mysql' database schema %s", err)
+		return []string{}, fmt.Errorf("could not find the 'mysql' database schema\n%s", err)
 	}
 
 	// enable slow query logs on MySQL

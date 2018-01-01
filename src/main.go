@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"gopherDigest/src/config"
 	"gopherDigest/src/conn"
@@ -81,25 +80,13 @@ func main() {
 		r.DB("GopherDigest").TableCreate("Queries").Exec(session)
 	}
 
-	var cfg = new(config.Config)
-	var db *sql.DB
-
-	cfg.Env, err = config.Check()
+	cfg, err := config.New()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cfg.AddConfig("connection", "mysql", "localhost", cfg.Env.Port, "tcp")
-	cfg.AddConfig("dependency", "MySQL", "mysql", "/usr/bin/mysql", "")
-	cfg.AddConfig("dependency", "PT Query Digest", "pt-query-digest", "/usr/bin/pt-query-digest", "")
-
-	_, err = config.LocateDependencies(cfg.Dependencies)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	db, err = conn.Init(cfg)
+	db, err := conn.Init(cfg.Connections)
 	defer db.Close()
 
 	if err != nil {
