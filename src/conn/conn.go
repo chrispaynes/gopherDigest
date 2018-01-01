@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"gopherDigest/src/config"
+	"log"
 	"os"
+	"time"
 
 	"github.com/fatih/color"
 	r "gopkg.in/gorethink/gorethink.v4"
@@ -18,24 +20,38 @@ type status struct {
 	errors []error
 }
 
-// checkMySQLConn checks for connectivity to external services
-func checkMySQLConn(d *sql.DB) (*status, error) {
+// checkMySQLConn checks for connectivity to external services with the ability to retry connections
+func checkMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*status, error) {
 	stat := status{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
 	color.New(color.Bold).Println("Checking MySQL Connection Status")
 
+	defer func() {
+		if r := recover(); r != nil {
+			next := remainingRetries - 1
+			fmt.Printf("could not connect to MySQL on the first attempt, attempting to reconnect:\n%d retry attempt(s) remaining\n\n", next+1)
+			time.Sleep(15 * time.Second)
+			if next < 0 {
+				log.Fatal("could not connect to MySQL database")
+			}
+			checkMySQLConn(d, totalRetries, next)
+		}
+	}()
+
 	err := d.Ping()
+
 	if err != nil {
 		stat.conn = red.Sprint(" CLOSED")
 		stat.port = red.Sprint(" NOT FOUND")
 		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", d.Stats()))
-		return &stat, err
+		panic(fmt.Sprintf("could not connect to database on attempt #%d %v", remainingRetries, err))
 	}
 
 	sock, err := os.Stat(os.Getenv("MYSQL_SOCKET"))
 	if err != nil {
+		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", err))
 		stat.socket = red.Sprintf(" %s", err)
 		return &stat, fmt.Errorf("could not locate the MySQL file\n%s", err)
 	}
@@ -55,7 +71,7 @@ func ConnectMySQL(c config.MySQLConn) (*sql.DB, error) {
 		return db, fmt.Errorf("could not open database connection\n%s", err)
 	}
 
-	conn, err := checkMySQLConn(db)
+	conn, err := checkMySQLConn(db, 10, 10)
 
 	if err != nil {
 		return db, fmt.Errorf("could not maintain database connection\n%s", err)

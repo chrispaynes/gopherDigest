@@ -62,7 +62,8 @@ src-package:
 	@mkdir -p $(pkgDir)
 	@echo package $(pkg) | tee $(pkgDir)/$(pkg).go $(pkgDir)/$(pkg)_test.go
 
-start: clean
+start:
+	@rm -f ./main
 	go run $(main)
 
 test:
