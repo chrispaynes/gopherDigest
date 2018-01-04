@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"gopherDigest/src/config"
-	"gopherDigest/src/conn"
 	"gopherDigest/src/storage"
 	"log"
 
@@ -20,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	RDBsession, err := conn.ConnectRethinkDB(cfg.Env[1])
+	RDBsession, err := config.ConnectRethinkDB(cfg.Env[1])
 	defer RDBsession.Close()
 
 	if err != nil {
@@ -58,7 +57,7 @@ func main() {
 		r.DB("GopherDigest").TableCreate("Queries").Exec(RDBsession)
 	}
 
-	db, err := conn.ConnectMySQL(cfg.Connections)
+	db, err := config.ConnectMySQL(cfg.Connections)
 	defer db.Close()
 
 	if err != nil {
