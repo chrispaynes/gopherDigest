@@ -11,32 +11,17 @@ import (
 	"github.com/fatih/color"
 )
 
-// MySQLConn defines data source and the means of connecting to it
-type MySQLConn struct {
-	Auth     Auth
-	Driver   string
-	Host     string
-	Port     string
-	Status   interface{}
-	Protocol string
+// MySQL defines data source and the means of connecting to it
+type MySQL struct {
+	user     string
+	password string
+	host     string
+	port     int
+	protocol string
 }
 
-// NewConnString creates a connection string
-func (c *Config) NewConnString(args ...string) *MySQLConn {
-	cn := MySQLConn{
-		Auth:     Auth{Username: os.Getenv(args[0]), Password: os.Getenv(args[1])},
-		Driver:   args[2],
-		Host:     args[3],
-		Port:     args[4],
-		Protocol: args[5],
-	}
-	c.Connections = cn
-
-	return &cn
-}
-
-func enableSlowQueryLogs(db *sql.DB) ([]string, error) {
-	return storage.PrintExec(db, []string{
+func enableSlowQueryLogs(db *sql.DB) error {
+	_, err := storage.PrintExec(db, []string{
 		"USE mysql",
 		"SET @@GLOBAL.slow_query_log = 'ON'",
 		"SET long_query_time = 0",
@@ -47,11 +32,24 @@ func enableSlowQueryLogs(db *sql.DB) ([]string, error) {
 		"SET @@GLOBAL.sql_log_off = 'ON'",
 		"SET @@GLOBAL.log_queries_not_using_indexes = 'ON'",
 	})
+
+	return err
 }
 
-// checkMySQLConn checks for connectivity to external services with the ability to retry connections
-func checkMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*status, error) {
-	stat := status{}
+// NewMySQL creates a new MySQL Database configuration
+func NewMySQL(u, p1, h, p2 string, p3 int) MySQL {
+	return MySQL{
+		user:     u,
+		password: p1,
+		host:     h,
+		protocol: p2,
+		port:     p3,
+	}
+}
+
+// CheckMySQLConn checks for connectivity to external services with the ability to retry connections
+func CheckMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*Health, error) {
+	stat := Health{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
@@ -65,7 +63,7 @@ func checkMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*status, err
 			if next < 0 {
 				log.Fatal("could not connect to MySQL database")
 			}
-			checkMySQLConn(d, totalRetries, next)
+			CheckMySQLConn(d, totalRetries, next)
 		}
 	}()
 
@@ -93,17 +91,17 @@ func checkMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*status, err
 }
 
 // InitMySQLDB initializes the MySQL Database connection
-func InitMySQLDB(c MySQLConn) (*sql.DB, error) {
-	db, err := sql.Open(c.Driver, fmt.Sprintf("%s:%s@%s(%s:%v)/", c.Auth.Username, c.Auth.Password, c.Protocol, c.Host, c.Port))
+func InitMySQLDB(m MySQL) (*sql.DB, error) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@%s(%s:%v)/", m.user, m.password, m.protocol, m.host, m.port))
 
 	if err != nil {
-		return db, fmt.Errorf("could not open database connection\n%s", err)
+		return nil, fmt.Errorf("could not open database connection\n%s", err)
 	}
 
-	conn, err := checkMySQLConn(db, 10, 10)
+	conn, err := CheckMySQLConn(db, 10, 10)
 
 	if err != nil {
-		return db, fmt.Errorf("could not maintain database connection\n%s", err)
+		return nil, fmt.Errorf("could not maintain database connection\n%s", err)
 	}
 
 	_, err = storage.PrintExec(db, []string{
@@ -117,7 +115,11 @@ func InitMySQLDB(c MySQLConn) (*sql.DB, error) {
 	// print connection status
 	fmt.Printf("  %+v\n\n", conn)
 
-	enableSlowQueryLogs(db)
+	err = enableSlowQueryLogs(db)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not enable slow query logs\n%s", err)
+	}
 
 	return db, nil
 }

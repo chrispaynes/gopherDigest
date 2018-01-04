@@ -5,6 +5,7 @@ import (
 	"gopherDigest/src/config"
 	"gopherDigest/src/storage"
 	"log"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	r "gopkg.in/gorethink/gorethink.v4"
@@ -13,20 +14,26 @@ import (
 func main() {
 	var err error
 
-	cfg, err := config.New()
+	_, err = config.New()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	RDBsession, err := config.InitRethinkDB(cfg)
+	rConfig := config.NewRethinkDB(os.Getenv("RDB_USERNAME"),
+		os.Getenv("RDB_PASSWORD"), os.Getenv("RDB_DATABASE"), os.Getenv("RDB_ADDRESS"))
+
+	RDBsession, err := config.InitRethinkDB(*rConfig)
 	defer RDBsession.Close()
 
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	db, err := config.InitMySQLDB(cfg.Connections)
+	mConfig := config.NewMySQL(os.Getenv("MYSQL_USER"),
+		os.Getenv("MYSQL_PASSWORD"), "localhost", "tcp", 3306)
+
+	db, err := config.InitMySQLDB(mConfig)
 	defer db.Close()
 
 	if err != nil {

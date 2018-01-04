@@ -13,7 +13,6 @@ import (
 // Config defines main application configuration
 type Config struct {
 	Dependencies []Dependency
-	Connections  MySQLConn
 	Env          []SetterReader
 	Required     *format.DelimitedCollection
 }
@@ -26,26 +25,10 @@ type Dependency struct {
 	Source  string
 }
 
-// MySQLEnv defines the host machine's environment variables
-type MySQLEnv struct {
-	Context, User, Password, Host, Port string
-}
-
-// RethinkDBEnv defines the host machine's environment variables
-type RethinkDBEnv struct {
-	Context, Address, Database, Username, Password string
-}
-
 // SetterReader defines the interface implemented by environment variables
 type SetterReader interface {
 	set(k, v string) error
 	Read(k string) string
-}
-
-// Auth defines authorization credentials
-type Auth struct {
-	Username string
-	Password string
 }
 
 // NewDependency creates a new runtime dependency
@@ -89,19 +72,19 @@ func (c *Config) locateDependencies() (*[]Dependency, error) {
 	return &c.Dependencies, nil
 }
 
-func (m MySQLEnv) set(k, v string) error {
+func (m MySQL) set(k, v string) error {
 	return setEnvVar(&m, k, v)
 }
 
-func (r RethinkDBEnv) set(k, v string) error {
+func (r RethinkDB) set(k, v string) error {
 	return setEnvVar(&r, k, v)
 }
 
-func (m MySQLEnv) Read(k string) string {
+func (m MySQL) Read(k string) string {
 	return readEnvVar(&m, k)
 }
 
-func (r RethinkDBEnv) Read(k string) string {
+func (r RethinkDB) Read(k string) string {
 	return readEnvVar(&r, k)
 }
 
@@ -111,12 +94,12 @@ func readEnvVar(s SetterReader, k string) string {
 
 // set is a helper function to set a field's value within a struct
 func setEnvVar(s SetterReader, k, v string) error {
-	original := fmt.Sprint(reflect.ValueOf(s).Elem().FieldByName(k))
-	reflect.ValueOf(s).Elem().FieldByName(k).SetString(v)
+	// original := fmt.Sprint(reflect.ValueOf(s).Elem().FieldByName(k))
+	// reflect.ValueOf(s).Elem().FieldByName(k).SetString(v)
 
-	if original == fmt.Sprint(reflect.ValueOf(s).Elem().FieldByName(k)) {
-		return fmt.Errorf("could not set the environment variable '%s'", k)
-	}
+	// if original == fmt.Sprint(reflect.ValueOf(s).Elem().FieldByName(k)) {
+	// 	return fmt.Errorf("could not set the environment variable '%s'", k)
+	// }
 
 	return nil
 }
@@ -153,15 +136,14 @@ func New() (*Config, error) {
 	cfg := &Config{}
 	cfg.NewDependency("MySQL", "mysql", "/usr/bin/mysql", "")
 	cfg.NewDependency("PT Query Digest", "pt-query-digest", "/usr/bin/pt-query-digest", "")
-	cfg.NewConnString("MYSQL_USER", "MYSQL_PASSWORD", "mysql", "localhost", os.Getenv("MYSQL_PORT"), "tcp")
-	cfg.NewEnv(format.NewDelimitedCollection("MYSQL", "_", []string{"USER", "PASSWORD", "HOST", "PORT"}), &MySQLEnv{})
-	cfg.NewEnv(format.NewDelimitedCollection("RDB", "_", []string{"ADDRESS", "DATABASE", "USERNAME", "PASSWORD"}), &RethinkDBEnv{})
+	cfg.NewEnv(format.NewDelimitedCollection("RDB", "_", []string{"ADDRESS", "DATABASE", "USERNAME", "PASSWORD"}), &RethinkDB{})
+	cfg.NewEnv(format.NewDelimitedCollection("MYSQL", "_", []string{"USER", "PASSWORD", "HOST", "PORT"}), &MySQL{})
 
 	return cfg.check()
 }
 
-// status defines the status of a network connection
-type status struct {
+// Health defines the status of a network connection
+type Health struct {
 	conn   string
 	port   string
 	socket string

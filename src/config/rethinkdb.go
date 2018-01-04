@@ -9,10 +9,25 @@ import (
 	"github.com/fatih/color"
 )
 
-// InitRethinkDB initializes the connection
-func InitRethinkDB(c *Config) (*r.Session, error) {
+// RethinkDB defines the host machine's environment variables
+type RethinkDB struct {
+	address, database, user, password string
+}
 
-	RDBsession, err := connectRethinkDB(c.Env[1])
+// NewRethinkDB creates a new RethinkDB Database configuration
+func NewRethinkDB(u, p, d, a string) *RethinkDB {
+	return &RethinkDB{
+		user:     u,
+		password: p,
+		database: d,
+		address:  a,
+	}
+}
+
+// InitRethinkDB initializes the connection
+func InitRethinkDB(c RethinkDB) (*r.Session, error) {
+
+	RDBsession, err := connectRethinkDB(c)
 
 	// WIP - RETHINKDB move to config module
 	// To login with a username and password you should first create a user,
@@ -49,16 +64,16 @@ func InitRethinkDB(c *Config) (*r.Session, error) {
 }
 
 // Check checks for connectivity to external services
-func checkRethinkDBConn(d *r.Session) (*status, error) {
-	stat := status{}
+func checkRethinkDBConn(s *r.Session) (*Health, error) {
+	stat := Health{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
 	color.New(color.Bold).Println("RethinkDB Connection Status")
 
-	server, err := d.Server()
+	server, err := s.Server()
 
-	if err != nil || !d.IsConnected() {
+	if err != nil || !s.IsConnected() {
 		stat.conn = red.Sprint(" CLOSED")
 		stat.port = red.Sprint(" NOT FOUND")
 		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", err))
@@ -72,18 +87,19 @@ func checkRethinkDBConn(d *r.Session) (*status, error) {
 	return &stat, nil
 }
 
-func connectRethinkDB(c SetterReader) (*r.Session, error) {
-
+func connectRethinkDB(c RethinkDB) (*r.Session, error) {
 	db, err := r.Connect(r.ConnectOpts{
-		Address:  c.Read("Address"),
-		Database: c.Read("Database"),
-		Username: c.Read("Username"),
-		Password: c.Read("Password"),
+		Address:  c.address,
+		Database: c.database,
+		Username: c.user,
+		Password: c.password,
 	})
+
+	fmt.Print(err)
 
 	conn, err := checkRethinkDBConn(db)
 
 	fmt.Printf("  %+v\n\n", conn)
 
-	return db, err
+	return db, nil
 }
