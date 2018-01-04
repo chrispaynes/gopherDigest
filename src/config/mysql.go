@@ -6,6 +6,7 @@ import (
 	"gopherDigest/src/storage"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/fatih/color"
@@ -17,7 +18,6 @@ type MySQL struct {
 	password string
 	host     string
 	port     int
-	protocol string
 }
 
 func enableSlowQueryLogs(db *sql.DB) error {
@@ -37,13 +37,10 @@ func enableSlowQueryLogs(db *sql.DB) error {
 }
 
 // NewMySQL creates a new MySQL Database configuration
-func NewMySQL(u, p1, h, p2 string, p3 int) MySQL {
+func NewMySQL(args ...string) MySQL {
+	port, _ := strconv.Atoi(args[3])
 	return MySQL{
-		user:     u,
-		password: p1,
-		host:     h,
-		protocol: p2,
-		port:     p3,
+		user: args[0], password: args[1], host: args[2], port: port,
 	}
 }
 
@@ -92,7 +89,7 @@ func CheckMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*Health, err
 
 // InitMySQLDB initializes the MySQL Database connection
 func InitMySQLDB(m MySQL) (*sql.DB, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@%s(%s:%v)/", m.user, m.password, m.protocol, m.host, m.port))
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/", m.user, m.password, m.host, m.port))
 
 	if err != nil {
 		return nil, fmt.Errorf("could not open database connection\n%s", err)

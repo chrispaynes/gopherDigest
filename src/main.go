@@ -20,8 +20,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rConfig := config.NewRethinkDB(os.Getenv("RDB_USERNAME"),
-		os.Getenv("RDB_PASSWORD"), os.Getenv("RDB_DATABASE"), os.Getenv("RDB_ADDRESS"))
+	rConfig := config.NewRethinkDB(
+		config.GetSecrets(os.Getenv, "RDB", "_", "USERNAME", "PASSWORD", "DATABASE", "ADDRESS")...)
 
 	RDBsession, err := config.InitRethinkDB(*rConfig)
 	defer RDBsession.Close()
@@ -30,8 +30,8 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	mConfig := config.NewMySQL(os.Getenv("MYSQL_USER"),
-		os.Getenv("MYSQL_PASSWORD"), "localhost", "tcp", 3306)
+	mConfig := config.NewMySQL(
+		config.GetSecrets(os.Getenv, "MYSQL", "_", "USER", "PASSWORD", "HOST", "PORT")...)
 
 	db, err := config.InitMySQLDB(mConfig)
 	defer db.Close()

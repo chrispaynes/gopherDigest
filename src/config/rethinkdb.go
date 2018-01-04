@@ -15,12 +15,9 @@ type RethinkDB struct {
 }
 
 // NewRethinkDB creates a new RethinkDB Database configuration
-func NewRethinkDB(u, p, d, a string) *RethinkDB {
+func NewRethinkDB(args ...string) *RethinkDB {
 	return &RethinkDB{
-		user:     u,
-		password: p,
-		database: d,
-		address:  a,
+		user: args[0], password: args[1], database: args[2], address: args[3],
 	}
 }
 
