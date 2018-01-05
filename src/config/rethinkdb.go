@@ -22,42 +22,82 @@ func NewRethinkDB(args ...string) *RethinkDB {
 }
 
 // InitRethinkDB initializes the connection
-func InitRethinkDB(c RethinkDB) (*r.Session, error) {
+func InitRethinkDB(rdb RethinkDB) (*r.Session, error) {
+	if err := executeAdminDuties(rdb); err != nil {
+		return nil, fmt.Errorf("%s", err)
+	}
 
-	RDBsession, err := connectRethinkDB(c)
+	RDBsession, err := connectRethinkDB(rdb)
 
-	// WIP - RETHINKDB move to config module
-	// To login with a username and password you should first create a user,
-	// this can be done by writing to the users system table and then grant
-	// that user access to any tables or databases they need access to.
-	r.DB("rethinkdb").Table("users").Insert(map[string]string{
-		"id":       "fakeUser123",
-		"password": "fakePassword123",
-	}).Exec(RDBsession)
+	if err != nil {
+		return nil, fmt.Errorf("%s", err)
+	}
 
-	// WIP - RETHINKDB move to config module
-	// then grant that user access to any tables or databases they need access to
-	r.Table("Queries").Grant("fakeUser123", map[string]bool{
-		"read":  true,
-		"write": true,
-	}).Exec(RDBsession)
+	return RDBsession, err
+}
 
-	var row []string
+func executeAdminDuties(rdb RethinkDB) error {
+	// connect as admin
+	// TODO initialize DB with admin password and add to ENV
+	RDBsession, err := r.Connect(r.ConnectOpts{
+		Address: rdb.address,
+	})
+
+	if err != nil {
+		return fmt.Errorf("%s", err)
+	}
+
+	var DBrow []string
 	res, err := r.DBList().Run(RDBsession)
+
 	if err != nil {
 		fmt.Println("could not load the RethinkDB databases")
 	}
 
-	res.All(&row)
+	res.All(&DBrow)
 
-	// check if DB already exists
-	// todo add similar check for DB table
-	if format.IndexOfString("GopherDigest", row) == -1 {
+	// create Database if it doesn't already exist
+	if format.IndexOfString("GopherDigest", DBrow) == -1 {
 		r.DBCreate("GopherDigest").Exec(RDBsession)
-		r.DB("GopherDigest").TableCreate("Queries").Exec(RDBsession)
 	}
 
-	return RDBsession, err
+	err = r.DB("rethinkdb").Table("users").Insert(map[string]string{
+		"id":       rdb.user,
+		"password": rdb.password,
+	}).Exec(RDBsession)
+
+	if err != nil {
+		return fmt.Errorf("failed to create user %s", rdb.user)
+	}
+
+	var tblRow []string
+	tables, err := r.DB("GopherDigest").TableList().Run(RDBsession)
+
+	tables.All(&tblRow)
+
+	// create table if it doesn't already exist
+	if format.IndexOfString("Queries", tblRow) == -1 {
+		if err := r.DB("GopherDigest").TableCreate("Queries").Exec(RDBsession); err != nil {
+			return fmt.Errorf("failed to create the 'Queries' table")
+		}
+	}
+
+	if err != nil {
+		fmt.Println("could not load the GopherDigest database tables")
+	}
+
+	// then grant that user access to any tables or databases they need access to
+	err = r.DB("GopherDigest").Table("Queries").Grant(rdb.user, map[string]bool{
+		"read":  true,
+		"write": true,
+	}).Exec(RDBsession)
+
+	if err != nil {
+		return fmt.Errorf("could not grant administrative access to the 'Queries' table for user %s", rdb.user)
+	}
+
+	return nil
+
 }
 
 // Check checks for connectivity to external services
@@ -92,7 +132,9 @@ func connectRethinkDB(c RethinkDB) (*r.Session, error) {
 		Password: c.password,
 	})
 
-	fmt.Print(err)
+	if err != nil {
+		return nil, fmt.Errorf("%s", err)
+	}
 
 	conn, err := checkRethinkDBConn(db)
 
