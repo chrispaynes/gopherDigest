@@ -1,28 +1,53 @@
-package config
+package rethinkdb
 
 import (
 	"fmt"
-	"gopherDigest/src/format"
+	"gopherDigest/pkg/config"
+	"gopherDigest/pkg/format"
 
 	r "gopkg.in/gorethink/gorethink.v4"
 
 	"github.com/fatih/color"
 )
 
+// QueryDump represents a MySQL Query Performance Dump
+type QueryDump struct {
+	Search        string     `gorethink:"Search"`
+	ExecutionTime float64    `gorethink:"ExecutionTime"`
+	QueryTime     r.Term     `gorethink:"QueryTime"`
+	SQLExplain    SQLExplain `gorethink:"SQLExplain"`
+}
+
+// SQLExplain represents a MySQL Explain Result
+type SQLExplain struct {
+	ID           int     `gorethink:"ZID"`
+	SelectType   *string `gorethink:"SelectType"`
+	Table        *string `gorethink:"Table"`
+	Partitions   *string `gorethink:"Partitions"`
+	Ztype        *string `gorethink:"Ztype"`
+	PossibleKeys *string `gorethink:"PossibleKeys"`
+	Key          *string `gorethink:"Key"`
+	KeyLen       *string `gorethink:"KeyLen"`
+	Ref          *string `gorethink:"Ref"`
+	Rows         int     `gorethink:"Rows"`
+	Filtered     []byte  `gorethink:"Filtered"`
+	Extra        *string `gorethink:"Extra"`
+}
+
 // RethinkDB defines the host machine's environment variables
 type RethinkDB struct {
 	address, database, user, password string
 }
 
-// NewRethinkDB creates a new RethinkDB Database configuration
-func NewRethinkDB(args ...string) *RethinkDB {
+// New creates a new RethinkDB Database configuration
+func New(args ...string) *RethinkDB {
 	return &RethinkDB{
 		user: args[0], password: args[1], database: args[2], address: args[3],
 	}
 }
 
-// InitRethinkDB initializes the connection
-func InitRethinkDB(rdb RethinkDB) (*r.Session, error) {
+// Init initializes the connection
+func Init(rdb RethinkDB) (*r.Session, error) {
 	if err := executeAdminDuties(rdb); err != nil {
 		return nil, fmt.Errorf("%s", err)
 	}
@@ -100,9 +125,8 @@ func executeAdminDuties(rdb RethinkDB) error {
 
 }
 
-// Check checks for connectivity to external services
-func checkRethinkDBConn(s *r.Session) (*Health, error) {
-	stat := Health{}
+func checkConnection(s *r.Session) (*config.Health, error) {
+	stat := config.Health{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
@@ -111,15 +135,15 @@ func checkRethinkDBConn(s *r.Session) (*Health, error) {
 	server, err := s.Server()
 
 	if err != nil || !s.IsConnected() {
-		stat.conn = red.Sprint(" CLOSED")
-		stat.port = red.Sprint(" NOT FOUND")
-		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", err))
+		stat.Conn = red.Sprint(" CLOSED")
+		stat.Port = red.Sprint(" NOT FOUND")
+		stat.Errors = append(stat.Errors, fmt.Errorf("could not connect to DB\n%v", err))
 		return &stat, err
 	}
 
-	stat.conn = green.Sprint(" OPEN")
-	stat.port = green.Sprint(" 28015")
-	stat.socket = green.Sprintf(" %s", server.Name)
+	stat.Conn = green.Sprint(" OPEN")
+	stat.Port = green.Sprint(" 28015")
+	stat.Socket = green.Sprintf(" %s", server.Name)
 
 	return &stat, nil
 }
@@ -136,7 +160,7 @@ func connectRethinkDB(c RethinkDB) (*r.Session, error) {
 		return nil, fmt.Errorf("%s", err)
 	}
 
-	conn, err := checkRethinkDBConn(db)
+	conn, err := checkConnection(db)
 
 	fmt.Printf("  %+v\n\n", conn)
 

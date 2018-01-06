@@ -1,9 +1,9 @@
-package config
+package mysql
 
 import (
 	"database/sql"
 	"fmt"
-	"gopherDigest/src/storage"
+	"gopherDigest/pkg/config"
 	"log"
 	"os"
 	"strconv"
@@ -21,7 +21,7 @@ type MySQL struct {
 }
 
 func enableSlowQueryLogs(db *sql.DB) error {
-	_, err := storage.PrintExec(db, []string{
+	_, err := printExec(db, []string{
 		"USE mysql",
 		"SET @@GLOBAL.slow_query_log = 'ON'",
 		"SET long_query_time = 0",
@@ -36,17 +36,17 @@ func enableSlowQueryLogs(db *sql.DB) error {
 	return err
 }
 
-// NewMySQL creates a new MySQL Database configuration
-func NewMySQL(args ...string) MySQL {
+// New creates a new MySQL Database configuration
+func New(args ...string) MySQL {
 	port, _ := strconv.Atoi(args[3])
 	return MySQL{
 		user: args[0], password: args[1], host: args[2], port: port,
 	}
 }
 
-// CheckMySQLConn checks for connectivity to external services with the ability to retry connections
-func CheckMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*Health, error) {
-	stat := Health{}
+// CheckConnection checks for connectivity to external services with the ability to retry connections
+func CheckConnection(d *sql.DB, totalRetries, remainingRetries int) (*config.Health, error) {
+	stat := config.Health{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
@@ -60,48 +60,48 @@ func CheckMySQLConn(d *sql.DB, totalRetries, remainingRetries int) (*Health, err
 			if next < 0 {
 				log.Fatal("could not connect to MySQL database")
 			}
-			CheckMySQLConn(d, totalRetries, next)
+			CheckConnection(d, totalRetries, next)
 		}
 	}()
 
 	err := d.Ping()
 
 	if err != nil {
-		stat.conn = red.Sprint(" CLOSED")
-		stat.port = red.Sprint(" NOT FOUND")
-		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", d.Stats()))
+		stat.Conn = red.Sprint(" CLOSED")
+		stat.Port = red.Sprint(" NOT FOUND")
+		stat.Errors = append(stat.Errors, fmt.Errorf("could not connect to DB\n%v", d.Stats()))
 		panic(fmt.Sprintf("could not connect to database on attempt #%d %v", remainingRetries, err))
 	}
 
 	sock, err := os.Stat(os.Getenv("MYSQL_SOCKET"))
 	if err != nil {
-		stat.errors = append(stat.errors, fmt.Errorf("could not connect to DB\n%v", err))
-		stat.socket = red.Sprintf(" %s", err)
+		stat.Errors = append(stat.Errors, fmt.Errorf("could not connect to DB\n%v", err))
+		stat.Socket = red.Sprintf(" %s", err)
 		return &stat, fmt.Errorf("could not locate the MySQL file\n%s", err)
 	}
 
-	stat.conn = green.Sprint(" OPEN")
-	stat.port = green.Sprint(" 3306")
-	stat.socket = green.Sprintf(" %s", sock.Name())
+	stat.Conn = green.Sprint(" OPEN")
+	stat.Port = green.Sprint(" 3306")
+	stat.Socket = green.Sprintf(" %s", sock.Name())
 
 	return &stat, nil
 }
 
-// InitMySQLDB initializes the MySQL Database connection
-func InitMySQLDB(m MySQL) (*sql.DB, error) {
+// Init initializes the MySQL Database connection
+func Init(m MySQL) (*sql.DB, error) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/", m.user, m.password, m.host, m.port))
 
 	if err != nil {
 		return nil, fmt.Errorf("could not open database connection\n%s", err)
 	}
 
-	conn, err := CheckMySQLConn(db, 10, 10)
+	conn, err := CheckConnection(db, 10, 10)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not maintain database connection\n%s", err)
 	}
 
-	_, err = storage.PrintExec(db, []string{
+	_, err = printExec(db, []string{
 		"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'mysql'",
 	})
 
@@ -119,4 +119,29 @@ func InitMySQLDB(m MySQL) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+// printExec prints SQL statements to standard output
+func printExec(db *sql.DB, stmnts []string) ([]string, error) {
+	results := []string{}
+
+	// execute statements and return result rows to array
+	for _, s := range stmnts {
+		fmt.Printf("mysql> %s;\n", s)
+		rows, err := db.Query(s)
+
+		if err != nil {
+			return []string{}, fmt.Errorf("could not execute the SQL statement %s", err)
+		}
+
+		var row string
+
+		for rows.Next() {
+			rows.Scan(&row)
+		}
+
+		results = append(results, row)
+	}
+
+	return results, nil
 }

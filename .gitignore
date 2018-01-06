@@ -2,6 +2,7 @@
 # **/*debug
 # Binaries for programs and plugins
 *.exe
+/bin
 
 # Test binary, build with `go test -c`
 *.test
@@ -13,6 +14,6 @@
 test_db/
 data/
 mysql-bin.index
-src/debug
+**/debug
 Docker/*.env
 *.rpm

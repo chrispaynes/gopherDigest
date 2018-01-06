@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"gopherDigest/src/config"
-	"gopherDigest/src/storage"
+	"gopherDigest/pkg/config"
+	"gopherDigest/pkg/mysql"
+	"gopherDigest/pkg/rethinkdb"
 	"log"
 	"os"
 
@@ -20,20 +21,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rConfig := config.NewRethinkDB(
+	rConfig := rethinkdb.New(
 		config.GetSecrets(os.Getenv, "RDB", "_", "USERNAME", "PASSWORD", "DATABASE", "ADDRESS")...)
 
-	RDBsession, err := config.InitRethinkDB(*rConfig)
+	RDBsession, err := rethinkdb.Init(*rConfig)
 	defer RDBsession.Close()
 
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	mConfig := config.NewMySQL(
+	mConfig := mysql.New(
 		config.GetSecrets(os.Getenv, "MYSQL", "_", "USER", "PASSWORD", "HOST", "PORT")...)
 
-	db, err := config.InitMySQLDB(mConfig)
+	db, err := mysql.Init(mConfig)
 	defer db.Close()
 
 	if err != nil {
@@ -45,7 +46,7 @@ func main() {
 	var test []string
 	queryString := "SELECT * FROM employees.employees LEFT JOIN employees.dept_emp USING(emp_no)"
 	db.Exec(queryString)
-	se := storage.SQLExplain{}
+	se := rethinkdb.SQLExplain{}
 	explainRows, _ := db.Query("EXPLAIN " + queryString)
 	defer explainRows.Close()
 
@@ -86,6 +87,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	r.Table("Queries").Insert(storage.QueryDump{Search: queryString, ExecutionTime: 0.34343, QueryTime: r.Now(), SQLExplain: se}).Run(RDBsession)
+	r.Table("Queries").Insert(rethinkdb.QueryDump{Search: queryString, ExecutionTime: 0.34343, QueryTime: r.Now(), SQLExplain: se}).Run(RDBsession)
 
 }

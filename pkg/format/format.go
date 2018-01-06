@@ -60,7 +60,7 @@ func NewDelimitedCollection(prefix, delimiter string, suffixColl []string) Delim
 	return dsc
 }
 
-// IndexOfStrings returns the index of a string within a slice or -1 if it does not exist
+// IndexOfString returns the index of a string within a slice or -1 if it does not exist
 func IndexOfString(dbname string, collection []string) int {
 	for i := range collection {
 		if collection[i] == dbname {

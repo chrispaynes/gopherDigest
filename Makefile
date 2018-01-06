@@ -1,8 +1,8 @@
-src = ./src
-main = $(src)/main.go
+src = ./pkg
+main = ./cmd/main.go
 pkgDir = $(src)/$(pkg)
 
-.PHONY: build clean coverage dockerUp fmt install perconaTools start test src-package SQLdata vet
+.PHONY: build clean coverage dockerUp fmt install perconaTools start test package SQLdata vet
 
 build:
 	docker-compose build
@@ -32,6 +32,13 @@ coverage:
 fmt:
 	@go fmt ./...
 
+gopherDigest:
+	@mkdir -p bin
+	@cd ./cmd/ \
+	&& go build -o gopherdigest \
+	&& mv gopherdigest ../bin \
+	&& cd ..
+
 install:
 	go install $(main)
 
@@ -58,7 +65,7 @@ SQLdata:
 	&& docker cp ./test_db/objects.sql MySQL:/docker-entrypoint-initdb.d/ \
 	&& docker exec MySQL sh -c 'mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" < /docker-entrypoint-initdb.d/employees.sql'
 
-src-package:
+package:
 	@mkdir -p $(pkgDir)
 	@echo package $(pkg) | tee $(pkgDir)/$(pkg).go $(pkgDir)/$(pkg)_test.go
 
