@@ -18,6 +18,7 @@ type MySQL struct {
 	password string
 	host     string
 	port     int
+	database string
 }
 
 func enableSlowQueryLogs(db *sql.DB) error {
@@ -37,10 +38,10 @@ func enableSlowQueryLogs(db *sql.DB) error {
 }
 
 // New creates a new MySQL Database configuration
-func New(args ...string) MySQL {
+func New(d string, args ...string) MySQL {
 	port, _ := strconv.Atoi(args[3])
 	return MySQL{
-		user: args[0], password: args[1], host: args[2], port: port,
+		user: args[0], password: args[1], host: args[2], port: port, database: "employees",
 	}
 }
 
@@ -89,7 +90,7 @@ func CheckConnection(d *sql.DB, totalRetries, remainingRetries int) (*config.Hea
 
 // Init initializes the MySQL Database connection
 func Init(m MySQL) (*sql.DB, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/", m.user, m.password, m.host, m.port))
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/employees", m.user, m.password, m.host, m.port))
 
 	if err != nil {
 		return nil, fmt.Errorf("could not open database connection\n%s", err)
@@ -144,4 +145,21 @@ func printExec(db *sql.DB, stmnts []string) ([]string, error) {
 	}
 
 	return results, nil
+}
+
+// Connect initializes the MySQL Database connection
+func Connect(m MySQL) (*sql.DB, error) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/employees", m.user, m.password, m.host, m.port))
+
+	if err != nil {
+		return nil, fmt.Errorf("could not open database connection\n%s", err)
+	}
+
+	// _, err = CheckConnection(db, 10, 10)
+
+	// if err != nil {
+	// 	return nil, fmt.Errorf("could not maintain database connection\n%s", err)
+	// }
+
+	return db, nil
 }

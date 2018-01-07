@@ -70,7 +70,7 @@ package:
 	@echo package $(pkg) | tee $(pkgDir)/$(pkg).go $(pkgDir)/$(pkg)_test.go
 
 start:
-	@rm -f ./main
+	@rm -f $(main)/main
 	go run $(main)
 
 test:

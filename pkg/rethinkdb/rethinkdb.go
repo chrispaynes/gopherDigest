@@ -12,13 +12,13 @@ import (
 
 // QueryDump represents a MySQL Query Performance Dump
 type QueryDump struct {
-	Search        string     `gorethink:"Search"`
-	ExecutionTime float64    `gorethink:"ExecutionTime"`
-	QueryTime     r.Term     `gorethink:"QueryTime"`
-	SQLExplain    SQLExplain `gorethink:"SQLExplain"`
+	Search     string     `gorethink:"Search"`
+	QueryTime  r.Term     `gorethink:"QueryTime"`
+	SQLExplain SQLExplain `gorethink:"SQLExplain"`
+	Timestamp  int64      `gorethink:"Timestamp"`
 }
 
-// SQLExplain represents a MySQL Explain Result
+//SQLExplain represents a MySQL Explain Result
 type SQLExplain struct {
 	ID           int     `gorethink:"ZID"`
 	SelectType   *string `gorethink:"SelectType"`
@@ -52,7 +52,7 @@ func Init(rdb RethinkDB) (*r.Session, error) {
 		return nil, fmt.Errorf("%s", err)
 	}
 
-	RDBsession, err := connectRethinkDB(rdb)
+	RDBsession, err := Connect(rdb)
 
 	if err != nil {
 		return nil, fmt.Errorf("%s", err)
@@ -148,7 +148,8 @@ func checkConnection(s *r.Session) (*config.Health, error) {
 	return &stat, nil
 }
 
-func connectRethinkDB(c RethinkDB) (*r.Session, error) {
+// Connect creates a connection to a RethinkDB database
+func Connect(c RethinkDB) (*r.Session, error) {
 	db, err := r.Connect(r.ConnectOpts{
 		Address:  c.address,
 		Database: c.database,

@@ -7,9 +7,11 @@ import (
 	"gopherDigest/pkg/rethinkdb"
 	"log"
 	"os"
+	"time"
+
+	r "gopkg.in/gorethink/gorethink.v4"
 
 	_ "github.com/go-sql-driver/mysql"
-	r "gopkg.in/gorethink/gorethink.v4"
 )
 
 func main() {
@@ -31,9 +33,10 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	mConfig := mysql.New(
+	mConfig := mysql.New("",
 		config.GetSecrets(os.Getenv, "MYSQL", "_", "USER", "PASSWORD", "HOST", "PORT")...)
 
+	// TODO: only init if there isn't a connection
 	db, err := mysql.Init(mConfig)
 	defer db.Close()
 
@@ -41,52 +44,60 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// TODO MOVE TO the data storage package
+	db.Exec("USE employees")
+
 	// generate slow query log data and move data to RethinkDB
-	var test []string
-	queryString := "SELECT * FROM employees.employees LEFT JOIN employees.dept_emp USING(emp_no)"
-	db.Exec(queryString)
-	se := rethinkdb.SQLExplain{}
-	explainRows, _ := db.Query("EXPLAIN " + queryString)
-	defer explainRows.Close()
+	queryString := "SELECT * FROM salaries s LEFT JOIN employees e USING(emp_no) LEFT JOIN dept_emp d USING(emp_no)"
 
-	for explainRows.Next() {
-		err := explainRows.Scan(&se.ID, &se.SelectType, &se.Table,
-			&se.Partitions, &se.Ztype, &se.PossibleKeys, &se.Key,
-			&se.KeyLen, &se.Ref, &se.Rows, &se.Filtered, &se.Extra)
+	// TODO: set MySQL max connections as a configurable based on available ram and buffers
+	for i := 0; i < 10000; i++ {
+
+		fmt.Println(i)
+		go db.Query(queryString)
+		defer db.Close()
+
+		explainRows, err := mysql.Explain(db, queryString)
+		defer explainRows.Close()
+
 		if err != nil {
-			fmt.Printf("ERROR %s", err)
+			log.Fatalf("query execution failed \n%s", err)
 		}
-	}
 
-	rows, err := db.Query(`
-		SELECT essbd.DIGEST_TEXT from performance_schema.events_statements_summary_by_digest essbd
-		LEFT JOIN performance_schema.events_statements_history esh
-		ON essbd.DIGEST = esh.DIGEST
-		WHERE SCHEMA_NAME = "employees" AND essbd.DIGEST_TEXT LIKE "SELECT%"
-		ORDER BY essbd.LAST_SEEN DESC LIMIT 1
-		`)
-	defer rows.Close()
+		se := rethinkdb.SQLExplain{}
 
-	if err != nil {
-		log.Fatal("failed to compute performance query")
-	}
+		if err := mysql.ScanRows(explainRows, se); err != nil {
+			log.Fatalf("failed to copy the row columns to the destination \n%s", err)
+		}
 
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		rows, err := db.Query(` 
+				SELECT essbd.DIGEST_TEXT from performance_schema.events_statements_summary_by_digest essbd
+				LEFT JOIN performance_schema.events_statements_history esh
+				ON essbd.DIGEST = esh.DIGEST
+				WHERE SCHEMA_NAME = "employees" AND essbd.DIGEST_TEXT LIKE "SELECT%"
+				ORDER BY essbd.LAST_SEEN DESC LIMIT 1
+			`)
+		defer rows.Close()
+
+		if err != nil {
+			log.Fatal("failed to compute performance query")
+		}
+
+		var test []string
+
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				log.Fatal(err)
+			}
+			test = append(test, name)
+		}
+
+		if err := rows.Err(); err != nil {
 			log.Fatal(err)
 		}
-		rows.Scan(&name)
-		test = append(test, name)
+		defer rows.Close()
 
-		fmt.Printf("%s\n", name)
+		go r.Table("Queries").Insert(rethinkdb.QueryDump{Search: queryString, Timestamp: time.Now().Unix(), QueryTime: r.Now(), SQLExplain: se}).Run(RDBsession)
 	}
-
-	if err := rows.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	r.Table("Queries").Insert(rethinkdb.QueryDump{Search: queryString, ExecutionTime: 0.34343, QueryTime: r.Now(), SQLExplain: se}).Run(RDBsession)
 
 }
