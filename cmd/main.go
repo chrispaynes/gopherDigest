@@ -50,8 +50,7 @@ func main() {
 	queryString := "SELECT * FROM salaries s LEFT JOIN employees e USING(emp_no) LEFT JOIN dept_emp d USING(emp_no)"
 
 	// TODO: set MySQL max connections as a configurable based on available ram and buffers
-	for i := 0; i < 10000; i++ {
-
+	for i := 0; i < 500; i++ {
 		fmt.Println(i)
 		go db.Query(queryString)
 		defer db.Close()
@@ -65,7 +64,7 @@ func main() {
 
 		se := rethinkdb.SQLExplain{}
 
-		if err := mysql.ScanRows(explainRows, se); err != nil {
+		if err := mysql.ScanRows(explainRows, &se); err != nil {
 			log.Fatalf("failed to copy the row columns to the destination \n%s", err)
 		}
 

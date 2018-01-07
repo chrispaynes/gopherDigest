@@ -54,7 +54,7 @@ func VerifyScan(db *sql.DB, statement, assertion string) (bool, error) {
 }
 
 // ScanRows scans a collections of rows onto a given destination
-func ScanRows(r *sql.Rows, se rethinkdb.SQLExplain) error {
+func ScanRows(r *sql.Rows, se *rethinkdb.SQLExplain) error {
 	defer r.Close()
 
 	for r.Next() {
