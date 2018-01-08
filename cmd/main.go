@@ -55,7 +55,6 @@ func main() {
 
 	// TODO: set MySQL max connections as a configurable based on available ram and buffers
 	for i := 0; i < mConfig2.GetMaxConns(); i++ {
-
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -73,13 +72,18 @@ func main() {
 		explain := make(chan *rethinkdb.SQLExplain)
 
 		go func() {
-			rows, _ := db2.Query(`
+			rows, err := db2.Query(`
 					SELECT essbd.DIGEST_TEXT from performance_schema.events_statements_summary_by_digest essbd
 					LEFT JOIN performance_schema.events_statements_history esh
 					ON essbd.DIGEST = esh.DIGEST
 					WHERE SCHEMA_NAME = "employees" AND essbd.DIGEST_TEXT LIKE "SELECT%"
 					ORDER BY essbd.LAST_SEEN DESC LIMIT 1
 				`)
+
+			if err != nil {
+				return
+			}
+
 			defer rows.Close()
 
 			for rows.Next() {
@@ -87,6 +91,10 @@ func main() {
 				if err := rows.Scan(&name); err != nil {
 					log.Fatal(err)
 				}
+			}
+
+			if err = rows.Err(); err != nil {
+				return
 			}
 
 			se, _ := mysql.ExplainScanRows(db2, queryString)
