@@ -35,13 +35,33 @@ func QueryScanRows(db *sql.DB, s string) (*sql.Rows, error) {
 	return rows, err
 }
 
-// ExplainScan runs a MySQL explain statement on a given query and scans
+// ExplainScanRow runs a MySQL explain statement on a given query and scans
 // the results onto a destination
-func ExplainScan(db *sql.DB, q string) string {
+func ExplainScanRow(db *sql.DB, q string) string {
 	var result string
 	db.QueryRow(q).Scan(&result)
 
 	return result
+}
+
+// ExplainScanRows runs a MySQL explain statement on a given query and scans
+// the results onto a destination
+func ExplainScanRows(db *sql.DB, query string) (*rethinkdb.SQLExplain, error) {
+	se := &rethinkdb.SQLExplain{}
+
+	rows, err := Explain(db, query)
+	// defer rows.Close()
+
+	if err != nil {
+		return se, fmt.Errorf("%s", err)
+	}
+
+	if err := ScanRows(rows, se); err != nil {
+		return se, fmt.Errorf("%s", err)
+	}
+
+	return se, nil
+
 }
 
 // VerifyScan queries the database to determine if an assertion about a
@@ -55,14 +75,12 @@ func VerifyScan(db *sql.DB, statement, assertion string) (bool, error) {
 
 // ScanRows scans a collections of rows onto a given destination
 func ScanRows(r *sql.Rows, se *rethinkdb.SQLExplain) error {
-	defer r.Close()
-
 	for r.Next() {
 		err := r.Scan(&se.ID, &se.SelectType, &se.Table,
 			&se.Partitions, &se.Ztype, &se.PossibleKeys, &se.Key,
 			&se.KeyLen, &se.Ref, &se.Rows, &se.Filtered, &se.Extra)
 		if err != nil {
-			fmt.Printf("ERROR %s", err)
+			return fmt.Errorf("failed to copy the row columns to the destination \n%s", err)
 		}
 	}
 

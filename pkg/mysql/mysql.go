@@ -14,11 +14,12 @@ import (
 
 // MySQL defines data source and the means of connecting to it
 type MySQL struct {
-	user     string
-	password string
-	host     string
-	port     int
-	database string
+	user           string
+	password       string
+	host           string
+	port           int
+	database       string
+	maxConnections int
 }
 
 func enableSlowQueryLogs(db *sql.DB) error {
@@ -40,8 +41,10 @@ func enableSlowQueryLogs(db *sql.DB) error {
 // New creates a new MySQL Database configuration
 func New(d string, args ...string) MySQL {
 	port, _ := strconv.Atoi(args[3])
+	maxConn, _ := strconv.Atoi(args[4])
+
 	return MySQL{
-		user: args[0], password: args[1], host: args[2], port: port, database: "employees",
+		user: args[0], password: args[1], host: args[2], port: port, database: "employees", maxConnections: maxConn,
 	}
 }
 
@@ -91,6 +94,9 @@ func CheckConnection(d *sql.DB, totalRetries, remainingRetries int) (*config.Hea
 // Init initializes the MySQL Database connection
 func Init(m MySQL) (*sql.DB, error) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/employees", m.user, m.password, m.host, m.port))
+	defer db.Close()
+
+	db.SetMaxIdleConns(2)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not open database connection\n%s", err)
@@ -108,6 +114,12 @@ func Init(m MySQL) (*sql.DB, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("could not find the 'mysql' database schema\n%s", err)
+	}
+
+	_, err = db.Exec(fmt.Sprintf("SET global max_connections = %d", m.maxConnections))
+
+	if err != nil {
+		fmt.Printf("could not set max_connections for SQL database\n%s\n", err)
 	}
 
 	// print connection status
@@ -130,6 +142,7 @@ func printExec(db *sql.DB, stmnts []string) ([]string, error) {
 	for _, s := range stmnts {
 		fmt.Printf("mysql> %s;\n", s)
 		rows, err := db.Query(s)
+		defer rows.Close()
 
 		if err != nil {
 			return []string{}, fmt.Errorf("could not execute the SQL statement %s", err)
@@ -162,4 +175,9 @@ func Connect(m MySQL) (*sql.DB, error) {
 	// }
 
 	return db, nil
+}
+
+// GetMaxConns gets the maximum number of open connections allowed for the database configuration.
+func (m MySQL) GetMaxConns() int {
+	return m.maxConnections
 }
