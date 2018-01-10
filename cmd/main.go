@@ -7,9 +7,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
-
-	r "gopkg.in/gorethink/gorethink.v4"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -67,7 +64,7 @@ func main() {
 
 		wg.Wait()
 
-		explain := make(chan *rethinkdb.SQLExplainRow)
+		explainCh := make(chan *rethinkdb.SQLExplainRow)
 
 		go func() {
 			rows, err := db2.Query(`
@@ -95,15 +92,14 @@ func main() {
 				return
 			}
 
-			se, _ := mysql.ExplainScanRows(db2, queryString)
+			row, _ := mysql.ExplainScanRows(db2, queryString)
 
-			explain <- se
+			explainCh <- row
 		}()
 
-		se := <-explain
-		seq := []rethinkdb.SQLExplainRow{*se}
+		explain := <-explainCh
 
-		r.Table("Queries").Insert(rethinkdb.QueryDump{Search: queryString, Timestamp: time.Now().Unix(), QueryTime: r.Now(), SQLExplainRows: seq}).Run(RDBsession)
+		rethinkdb.InsertSQLExplain(RDBsession, []rethinkdb.SQLExplainRow{*explain}, queryString)
 	}
 
 }

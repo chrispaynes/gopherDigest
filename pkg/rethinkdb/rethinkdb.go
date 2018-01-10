@@ -11,8 +11,8 @@ import (
 	"github.com/fatih/color"
 )
 
-// QueryDump represents a MySQL Query Performance Dump
-type QueryDump struct {
+// queryDump represents a MySQL Query Performance Dump
+type queryDump struct {
 	Search         string          `gorethink:"Search"`
 	QueryTime      r.Term          `gorethink:"QueryTime"`
 	SQLExplainRows []SQLExplainRow `gorethink:"SQLExplainRows"`
