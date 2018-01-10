@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopherDigest/pkg/config"
 	"gopherDigest/pkg/format"
+	"os"
 
 	r "gopkg.in/gorethink/gorethink.v4"
 
@@ -12,14 +13,14 @@ import (
 
 // QueryDump represents a MySQL Query Performance Dump
 type QueryDump struct {
-	Search     string     `gorethink:"Search"`
-	QueryTime  r.Term     `gorethink:"QueryTime"`
-	SQLExplain SQLExplain `gorethink:"SQLExplain"`
-	Timestamp  int64      `gorethink:"Timestamp"`
+	Search         string          `gorethink:"Search"`
+	QueryTime      r.Term          `gorethink:"QueryTime"`
+	SQLExplainRows []SQLExplainRow `gorethink:"SQLExplainRows"`
+	Timestamp      int64           `gorethink:"Timestamp"`
 }
 
-//SQLExplain represents a MySQL Explain Result
-type SQLExplain struct {
+// SQLExplainRow represents a MySQL Explain Result
+type SQLExplainRow struct {
 	ID           int     `gorethink:"ZID"`
 	SelectType   *string `gorethink:"SelectType"`
 	Table        *string `gorethink:"Table"`
@@ -162,8 +163,7 @@ func Connect(c RethinkDB) (*r.Session, error) {
 	}
 
 	conn, err := checkConnection(db)
-
-	fmt.Printf("  %+v\n\n", conn)
+	conn.PrintStatus(os.Stdout)
 
 	return db, nil
 }

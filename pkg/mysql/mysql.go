@@ -39,18 +39,18 @@ func enableSlowQueryLogs(db *sql.DB) error {
 }
 
 // New creates a new MySQL Database configuration
-func New(d string, args ...string) MySQL {
+func New(dbname string, args ...string) MySQL {
 	port, _ := strconv.Atoi(args[3])
 	maxConn, _ := strconv.Atoi(args[4])
 
 	return MySQL{
-		user: args[0], password: args[1], host: args[2], port: port, database: "employees", maxConnections: maxConn,
+		user: args[0], password: args[1], host: args[2], port: port, database: dbname, maxConnections: maxConn,
 	}
 }
 
 // CheckConnection checks for connectivity to external services with the ability to retry connections
 func CheckConnection(d *sql.DB, totalRetries, remainingRetries int) (*config.Health, error) {
-	stat := config.Health{}
+	stat := &config.Health{}
 	red := color.New(color.FgRed, color.Bold)
 	green := color.New(color.FgGreen, color.Bold)
 
@@ -59,18 +59,20 @@ func CheckConnection(d *sql.DB, totalRetries, remainingRetries int) (*config.Hea
 	defer func() {
 		if r := recover(); r != nil {
 			next := remainingRetries - 1
+
 			fmt.Printf("could not connect to MySQL on the first attempt, attempting to reconnect:\n%d retry attempt(s) remaining\n\n", next+1)
+
 			time.Sleep(15 * time.Second)
+
 			if next < 0 {
 				log.Fatal("could not connect to MySQL database")
 			}
+
 			CheckConnection(d, totalRetries, next)
 		}
 	}()
 
-	err := d.Ping()
-
-	if err != nil {
+	if err := d.Ping(); err != nil {
 		stat.Conn = red.Sprint(" CLOSED")
 		stat.Port = red.Sprint(" NOT FOUND")
 		stat.Errors = append(stat.Errors, fmt.Errorf("could not connect to DB\n%v", d.Stats()))
@@ -78,25 +80,25 @@ func CheckConnection(d *sql.DB, totalRetries, remainingRetries int) (*config.Hea
 	}
 
 	sock, err := os.Stat(os.Getenv("MYSQL_SOCKET"))
+
 	if err != nil {
 		stat.Errors = append(stat.Errors, fmt.Errorf("could not connect to DB\n%v", err))
 		stat.Socket = red.Sprintf(" %s", err)
-		return &stat, fmt.Errorf("could not locate the MySQL file\n%s", err)
+		return stat, fmt.Errorf("could not locate the MySQL file\n%s", err)
 	}
 
 	stat.Conn = green.Sprint(" OPEN")
 	stat.Port = green.Sprint(" 3306")
 	stat.Socket = green.Sprintf(" %s", sock.Name())
 
-	return &stat, nil
+	return stat, nil
 }
 
 // Init initializes the MySQL Database connection
 func Init(m MySQL) (*sql.DB, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/employees", m.user, m.password, m.host, m.port))
-	defer db.Close()
 
-	db.SetMaxIdleConns(2)
+	db, err := Connect(m)
+	defer db.Close()
 
 	if err != nil {
 		return nil, fmt.Errorf("could not open database connection\n%s", err)
@@ -122,8 +124,7 @@ func Init(m MySQL) (*sql.DB, error) {
 		fmt.Printf("could not set max_connections for SQL database\n%s\n", err)
 	}
 
-	// print connection status
-	fmt.Printf("  %+v\n\n", conn)
+	conn.PrintStatus(os.Stdout)
 
 	err = enableSlowQueryLogs(db)
 
@@ -162,17 +163,19 @@ func printExec(db *sql.DB, stmnts []string) ([]string, error) {
 
 // Connect initializes the MySQL Database connection
 func Connect(m MySQL) (*sql.DB, error) {
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%v)/employees", m.user, m.password, m.host, m.port))
+	var dsn string
 
-	if err != nil {
-		return nil, fmt.Errorf("could not open database connection\n%s", err)
+	if m.database != "" {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%v)/%s", m.user, m.password, m.host, m.port, m.database)
 	}
 
-	// _, err = CheckConnection(db, 10, 10)
+	dsn = fmt.Sprintf("%s:%s@tcp(%s:%v)/", m.user, m.password, m.host, m.port)
 
-	// if err != nil {
-	// 	return nil, fmt.Errorf("could not maintain database connection\n%s", err)
-	// }
+	db, err := sql.Open("mysql", dsn)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not open database connection to %s\n%s", m.database, err)
+	}
 
 	return db, nil
 }

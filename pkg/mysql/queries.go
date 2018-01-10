@@ -46,8 +46,8 @@ func ExplainScanRow(db *sql.DB, q string) string {
 
 // ExplainScanRows runs a MySQL explain statement on a given query and scans
 // the results onto a destination
-func ExplainScanRows(db *sql.DB, query string) (*rethinkdb.SQLExplain, error) {
-	se := &rethinkdb.SQLExplain{}
+func ExplainScanRows(db *sql.DB, query string) (*rethinkdb.SQLExplainRow, error) {
+	se := &rethinkdb.SQLExplainRow{}
 
 	rows, err := Explain(db, query)
 	// defer rows.Close()
@@ -74,7 +74,7 @@ func VerifyScan(db *sql.DB, statement, assertion string) (bool, error) {
 }
 
 // ScanRows scans a collections of rows onto a given destination
-func ScanRows(r *sql.Rows, se *rethinkdb.SQLExplain) error {
+func ScanRows(r *sql.Rows, se *rethinkdb.SQLExplainRow) error {
 	for r.Next() {
 		err := r.Scan(&se.ID, &se.SelectType, &se.Table,
 			&se.Partitions, &se.Ztype, &se.PossibleKeys, &se.Key,

@@ -27,3 +27,8 @@ The following tables lists the configurable application environment variables th
 | MYSQL_DATABASE      | This variable is optional and allows you to specify the name of a database to be created on image startup. If a user/password was supplied then that user will be granted superuser access (corresponding to GRANT ALL) to this database. | employees |
 | MYSQL_ROOT_PASSWORD      | This variable is mandatory and specifies the password that will be set for the MySQL root superuser account. | secretRootPassword |
 | MYSQL_SOCKET      | MySQL data transmission socket file location as defined in /etc/my.cnf. | /var/run/mysqld/mysqld.sock |
+| MYSQL_MAX_CONNECTIONS | Maximum number of network connections to MySQL Server | 151 |
+| RDB_ADDRESS | RethinkDB host:port | localhost:28015 |
+| RDB_DATABASE | RethinkDB Database Name | GopherDigest |
+| RDB_USERNAME | RethinkDB Username | user123 |
+| RDB_PASSWORD | RethinkDB Password | secretPassword|

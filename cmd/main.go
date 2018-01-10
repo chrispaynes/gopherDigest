@@ -33,16 +33,14 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	// TODO: define as root config
-	mConfig := mysql.New("",
+	mysqlRootConfig := mysql.New("",
 		config.GetSecrets(os.Getenv, "MYSQL", "_", "USER", "PASSWORD", "HOST", "PORT", "MAX_CONNECTIONS")...)
 
-	// TODO: define as user config
-	mConfig2 := mysql.New("mysql",
+	mysqlUserConfig := mysql.New("employees",
 		config.GetSecrets(os.Getenv, "MYSQL", "_", "USER", "PASSWORD", "HOST", "PORT", "MAX_CONNECTIONS")...)
 
 	// TODO: only init if the database isn't initialized
-	db, err := mysql.Init(mConfig)
+	db, err := mysql.Init(mysqlRootConfig)
 	defer db.Close()
 
 	if err != nil {
@@ -50,11 +48,11 @@ func main() {
 	}
 
 	queryString := "SELECT * FROM salaries s LEFT JOIN employees e USING(emp_no) LEFT JOIN dept_emp d USING(emp_no)"
-	db2, _ := mysql.Connect(mConfig2)
+	db2, _ := mysql.Connect(mysqlUserConfig)
 	defer db2.Close()
 
 	// TODO: set MySQL max connections as a configurable based on available ram and buffers
-	for i := 0; i < mConfig2.GetMaxConns(); i++ {
+	for i := 0; i < mysqlUserConfig.GetMaxConns(); i++ {
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -69,7 +67,7 @@ func main() {
 
 		wg.Wait()
 
-		explain := make(chan *rethinkdb.SQLExplain)
+		explain := make(chan *rethinkdb.SQLExplainRow)
 
 		go func() {
 			rows, err := db2.Query(`
@@ -103,8 +101,9 @@ func main() {
 		}()
 
 		se := <-explain
+		seq := []rethinkdb.SQLExplainRow{*se}
 
-		r.Table("Queries").Insert(rethinkdb.QueryDump{Search: queryString, Timestamp: time.Now().Unix(), QueryTime: r.Now(), SQLExplain: *se}).Run(RDBsession)
+		r.Table("Queries").Insert(rethinkdb.QueryDump{Search: queryString, Timestamp: time.Now().Unix(), QueryTime: r.Now(), SQLExplainRows: seq}).Run(RDBsession)
 	}
 
 }
