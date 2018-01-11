@@ -45,7 +45,9 @@ func main() {
 	}
 
 	queryString := "SELECT * FROM salaries s LEFT JOIN employees e USING(emp_no) LEFT JOIN dept_emp d USING(emp_no)"
+
 	db2, _ := mysql.Connect(mysqlUserConfig)
+
 	defer db2.Close()
 
 	// TODO: set MySQL max connections as a configurable based on available ram and buffers
@@ -66,40 +68,10 @@ func main() {
 
 		explainCh := make(chan *rethinkdb.SQLExplainRow)
 
-		go func() {
-			rows, err := db2.Query(`
-					SELECT essbd.DIGEST_TEXT from performance_schema.events_statements_summary_by_digest essbd
-					LEFT JOIN performance_schema.events_statements_history esh
-					ON essbd.DIGEST = esh.DIGEST
-					WHERE SCHEMA_NAME = "employees" AND essbd.DIGEST_TEXT LIKE "SELECT%"
-					ORDER BY essbd.LAST_SEEN DESC LIMIT 1
-				`)
-
-			if err != nil {
-				return
-			}
-
-			defer rows.Close()
-
-			for rows.Next() {
-				var name string
-				if err := rows.Scan(&name); err != nil {
-					log.Fatal(err)
-				}
-			}
-
-			if err = rows.Err(); err != nil {
-				return
-			}
-
-			row, _ := mysql.ExplainScanRows(db2, queryString)
-
-			explainCh <- row
-		}()
+		go mysql.FetchEventSummary(db2, queryString, &explainCh)
 
 		explain := <-explainCh
 
 		rethinkdb.InsertSQLExplain(RDBsession, []rethinkdb.SQLExplainRow{*explain}, queryString)
 	}
-
 }

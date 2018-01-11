@@ -167,9 +167,9 @@ func Connect(m MySQL) (*sql.DB, error) {
 
 	if m.database != "" {
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%v)/%s", m.user, m.password, m.host, m.port, m.database)
+	} else {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%v)/", m.user, m.password, m.host, m.port)
 	}
-
-	dsn = fmt.Sprintf("%s:%s@tcp(%s:%v)/", m.user, m.password, m.host, m.port)
 
 	db, err := sql.Open("mysql", dsn)
 
