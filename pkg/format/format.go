@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// DelimitedString is a
+// DelimitedString is a destructured Prefix + Delimiter + Suffix string
 type DelimitedString struct {
 	Prefix    string
 	Delimiter string
@@ -17,39 +17,23 @@ type DelimitedCollection struct {
 	Delimiter  string
 }
 
-// NewDelimitedString does
+// NewDelimitedString creates a new DelimitedString struct
 func NewDelimitedString(p, d, s string) DelimitedString {
 	return DelimitedString{Prefix: p, Suffix: s, Delimiter: d}
 }
 
-// Join concatenates a delimitedString
+// Join concatenates a DelimitedString
 func (ds DelimitedString) Join() string {
 	return strings.Join([]string{ds.Prefix, ds.Suffix}, ds.Delimiter)
 }
 
-// Titlecase titlecases a DelimitedString field
+// Titlecase titlecases a delimited string's prefix and suffix
 func (ds DelimitedString) Titlecase() string {
-	return strings.Title(strings.ToLower(ds.Suffix))
+	return strings.Title(strings.ToLower(ds.Prefix)) +
+		ds.Delimiter + strings.Title(strings.ToLower(ds.Suffix))
 }
 
-// SplitToTitlecase does
-func SplitToTitlecase(p int, tj TitlecaseJoiner) string {
-	var str string
-
-	if _, ok := tj.(DelimitedString); ok {
-		str = tj.Titlecase()
-	}
-
-	return str
-}
-
-// TitlecaseJoiner is the interface implemented by delimited string values
-type TitlecaseJoiner interface {
-	Titlecase() string
-	Join() string
-}
-
-// NewDelimitedCollection creates a collection of string with common prefix, delimiter and variable collection of suffixes
+// NewDelimitedCollection creates a collection of a string with common prefix, delimiter and variable number of suffixes
 func NewDelimitedCollection(prefix, delimiter string, suffixColl []string) DelimitedCollection {
 	dsc := DelimitedCollection{Delimiter: delimiter}
 
@@ -60,7 +44,7 @@ func NewDelimitedCollection(prefix, delimiter string, suffixColl []string) Delim
 	return dsc
 }
 
-// IndexOfString returns the index of a string within a slice or -1 if it does not exist
+// IndexOfString returns the index of a string within a slice or -1 if the string does not exist
 func IndexOfString(dbname string, collection []string) int {
 	for i := range collection {
 		if collection[i] == dbname {
