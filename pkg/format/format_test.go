@@ -1,6 +1,7 @@
 package format
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -68,6 +69,61 @@ func TestIndexOfString(t *testing.T) {
 
 			if actual != tc.expected {
 				t.Errorf("indexOfString of %v should be %v, but got %v", tc.name, tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestNewDelimitedString(t *testing.T) {
+	tt := []struct {
+		name      string
+		prefix    string
+		delimiter string
+		suffix    string
+		expected  DelimitedString
+	}{
+		{"AlphaPrefix, _, AlphaSuffix", "AlphaPrefix", "_", "AlphaSuffix", DelimitedString{Prefix: "AlphaPrefix", Delimiter: "_", Suffix: "AlphaSuffix"}},
+		{"AlphaPrefix, <space>, AlphaSuffix", "AlphaPrefix", " ", "AlphaSuffix", DelimitedString{Prefix: "AlphaPrefix", Delimiter: " ", Suffix: "AlphaSuffix"}},
+		{"<space>, _, AlphaSuffix", " ", "_", "AlphaSuffix", DelimitedString{Prefix: " ", Delimiter: "_", Suffix: "AlphaSuffix"}},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := NewDelimitedString(tc.prefix, tc.delimiter, tc.suffix)
+
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Errorf("newDelimitedString of %v should be %v, but got %v", tc.name, tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestNewDelimitedCollection(t *testing.T) {
+	tt := []struct {
+		name      string
+		prefix    string
+		delimiter string
+		suffix    []string
+		expected  DelimitedCollection
+	}{
+		{"AlphaPrefix, _, {AlphaSuffix, BravoSuffix, CharlieSuffix}",
+			"AlphaPrefix", "_", []string{"AlphaSuffix", "BravoSuffix", "CharlieSuffix"},
+			DelimitedCollection{
+				Collection: []DelimitedString{
+					{Prefix: "AlphaPrefix", Delimiter: "_", Suffix: "AlphaSuffix"},
+					{Prefix: "AlphaPrefix", Delimiter: "_", Suffix: "BravoSuffix"},
+					{Prefix: "AlphaPrefix", Delimiter: "_", Suffix: "CharlieSuffix"},
+				},
+				Delimiter: "_"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := NewDelimitedCollection(tc.prefix, tc.delimiter, tc.suffix)
+
+			if !reflect.DeepEqual(actual, tc.expected) {
+				t.Errorf("newDelimitedString of %v should be %v, but got %v", tc.name, tc.expected, actual)
 			}
 		})
 	}

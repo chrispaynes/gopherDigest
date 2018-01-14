@@ -11,7 +11,7 @@ type DelimitedString struct {
 	Suffix    string
 }
 
-// DelimitedCollection is
+// DelimitedCollection is a collection of DelimitedStrings
 type DelimitedCollection struct {
 	Collection []DelimitedString
 	Delimiter  string
