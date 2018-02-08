@@ -52,13 +52,19 @@ func (c *Config) addDependency(args ...string) *Dependency {
 func (c *Config) verifyDependencies() (*Config, error) {
 	color.New(color.Bold).Println("\nLocating Dependencies")
 
+	if len(c.Dependencies) == 0 {
+		return nil, fmt.Errorf("cannot verify dependencies on an empty Config")
+	}
+
 	for _, dep := range c.Dependencies {
-		_, err := os.Stat(dep.path)
-		if err != nil {
-			color.New(color.FgHiRed).Printf("  [x] Unable to locate %s executable at %s\n", dep.name, dep.path)
-			return nil, fmt.Errorf("ERROR: Missing Required Dependency %s", err)
+		if dep.name != "" && dep.path != "" {
+			_, err := os.Stat(dep.path)
+			if err != nil {
+				color.New(color.FgHiRed).Printf("  [x] Unable to locate %s executable at %s\n", dep.name, dep.path)
+				return nil, fmt.Errorf("missing required dependency %s", err)
+			}
+			color.New(color.FgHiGreen).Printf("  [\u2713] Using %v executable from %s \n", dep.name, dep.path)
 		}
-		color.New(color.FgHiGreen).Printf("  [\u2713] Using %v executable from %s \n", dep.name, dep.path)
 	}
 
 	fmt.Println()

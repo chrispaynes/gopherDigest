@@ -2,7 +2,7 @@ src = ./pkg
 main = ./cmd/main.go
 pkgDir = $(src)/$(pkg)
 
-.PHONY: build clean coverage dockerUp fmt install perconaTools start test package SQLdata vet
+.PHONY: build clean coverage dockerUp fmt install logs perconaTools start test package SQLdata vet
 
 build:
 	docker-compose build
@@ -42,6 +42,9 @@ gopherDigest:
 install:
 	go install $(main)
 
+logs:
+	docker-compose logs -f
+
 perconaTools:
 	if [ -n "$$(grep -Ei 'debian|ubuntu|mint' /etc/*release)" ]; then \
 		wget "https://www.percona.com/downloads/percona-toolkit/3.0.5/binary/debian/stretch/x86_64/percona-toolkit_3.0.5-1.stretch_amd64.deb" \
@@ -74,7 +77,7 @@ start:
 	go run $(main)
 
 test:
-	@go test **/*_test.go
+	@go test $(src)/**
 
 vet:
 	@go vet ./...
